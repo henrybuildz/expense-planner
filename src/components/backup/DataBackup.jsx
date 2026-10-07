@@ -17,7 +17,8 @@ const countText = (data) =>
     .join(', ');
 
 export default function DataBackup() {
-  const { transactions, budgets, subscriptions, replaceAll, mergeAll } = useApp();
+  const { transactions, budgets, subscriptions, replaceAll, mergeAll, clearAll } = useApp();
+  const isEmpty = !transactions.length && !Object.keys(budgets).length && !subscriptions.length;
   const fileInput = useRef(null);
   const [pending, setPending] = useState(null); // a validated file waiting for the user's choice
   const [message, setMessage] = useState(null); // { ok: boolean, text: string }
@@ -63,17 +64,30 @@ export default function DataBackup() {
     setPending({ ...result, fileName: file.name });
   };
 
+  // Safety net shared by Replace and Delete all: keep one copy of the current data in this browser.
+  const saveSafetyCopy = () => {
+    try {
+      window.localStorage.setItem(
+        KEYS.preImportBackup,
+        JSON.stringify(buildBackup({ transactions, budgets, subscriptions }))
+      );
+    } catch {
+      /* storage full: the user has just confirmed, so proceed */
+    }
+  };
+
+  const deleteAll = () => {
+    const what = countText({ transactions, budgets, subscriptions });
+    if (!window.confirm(`Delete ALL your data (${what})? This cannot be undone. Export first if you want a copy.`)) return;
+    saveSafetyCopy();
+    clearAll();
+    setPending(null);
+    setMessage({ ok: true, text: 'All data deleted.' });
+  };
+
   const apply = (mode) => {
     if (mode === 'replace') {
-      // Safety net: keep a copy of the current data so a mistaken replace can be undone.
-      try {
-        window.localStorage.setItem(
-          KEYS.preImportBackup,
-          JSON.stringify(buildBackup({ transactions, budgets, subscriptions }))
-        );
-      } catch {
-        /* storage full: proceed anyway, the user has just confirmed */
-      }
+      saveSafetyCopy();
       replaceAll(pending.data);
     } else {
       mergeAll(pending.data);
@@ -103,6 +117,14 @@ export default function DataBackup() {
           </button>
           <button type="button" className="btn btn-secondary" onClick={() => fileInput.current.click()}>
             Import data
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary !text-rose-600"
+            onClick={deleteAll}
+            disabled={isEmpty}
+          >
+            Delete all data
           </button>
           <input
             ref={fileInput}

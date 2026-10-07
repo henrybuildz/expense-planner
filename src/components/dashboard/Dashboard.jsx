@@ -28,7 +28,7 @@ function Metric({ label, value, hint, tone }) {
 }
 
 export default function Dashboard({ onNavigate }) {
-  const { transactions, loadSampleData } = useApp();
+  const { transactions } = useApp();
   const today = useToday(); // re-aggregates when the month rolls over
   const stats = useMemo(() => summarize(transactions, today), [transactions, today]);
   const recent = useMemo(
@@ -44,9 +44,6 @@ export default function Dashboard({ onNavigate }) {
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             <button type="button" className="btn btn-primary" onClick={() => onNavigate('transactions')}>
               Add a transaction
-            </button>
-            <button type="button" className="btn btn-secondary" onClick={loadSampleData}>
-              Load sample data
             </button>
           </div>
         </EmptyState>

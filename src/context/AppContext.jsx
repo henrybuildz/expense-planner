@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo } from 'react';
 import { KEYS } from '../constants/storage';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { addCycle, addDays, addMonths, todayISO } from '../utils/dates';
+import { addCycle, todayISO } from '../utils/dates';
 import { uid } from '../utils/format';
 import {
   sanitizeBudgets,
@@ -15,47 +15,6 @@ const dayOf = (iso) => Number(iso.slice(8));
 
 const EMPTY_LIST = [];
 const EMPTY_MAP = {};
-
-// Demo data relative to today, so the dashboard looks alive on first run.
-function buildSampleData() {
-  const today = todayISO();
-  const tx = (type, amount, category, daysAgo, notes) => ({
-    id: uid(),
-    type,
-    amount,
-    category,
-    date: addDays(today, -daysAgo),
-    notes,
-  });
-  const transactions = [];
-  const todayDay = Number(today.slice(8));
-  for (let m = 0; m < 6; m++) {
-    const base = addMonths(today, -m);
-    // Never date sample entries after today in the current month.
-    const at = (day) => `${base.slice(0, 8)}${String(m === 0 ? Math.min(day, todayDay) : day).padStart(2, '0')}`;
-    transactions.push(
-      { id: uid(), type: 'income', amount: 4200, category: 'Salary', date: at(1), notes: 'Monthly salary' },
-      { id: uid(), type: 'expense', amount: 1350, category: 'Housing', date: at(2), notes: 'Rent' },
-      { id: uid(), type: 'expense', amount: 140 + m * 12, category: 'Food', date: at(8), notes: 'Groceries' },
-      { id: uid(), type: 'expense', amount: 85, category: 'Transport', date: at(12), notes: 'Fuel & transit' },
-      { id: uid(), type: 'expense', amount: 120, category: 'Bills', date: at(15), notes: 'Utilities' },
-      { id: uid(), type: 'expense', amount: 60 + m * 9, category: 'Entertainment', date: at(20), notes: 'Movies & dining out' }
-    );
-  }
-  transactions.push(
-    tx('income', 450, 'Freelance', 3, 'Logo project'),
-    tx('expense', 38.5, 'Food', 1, 'Lunch with team'),
-    tx('expense', 64, 'Health', 2, 'Pharmacy')
-  );
-  const today0 = todayISO();
-  const subscriptions = [
-    { id: uid(), name: 'Netflix', cost: 15.49, cycle: 'monthly', nextDue: addDays(today0, 3), lastPaid: '' },
-    { id: uid(), name: 'Spotify', cost: 10.99, cycle: 'monthly', nextDue: addDays(today0, 12), lastPaid: '' },
-    { id: uid(), name: 'Cloud storage', cost: 99, cycle: 'yearly', nextDue: addDays(today0, 40), lastPaid: '' },
-  ];
-  const budgets = { Food: 400, Transport: 120, Entertainment: 100, Housing: 1400 };
-  return { transactions, subscriptions, budgets };
-}
 
 export function AppProvider({ children }) {
   const [transactions, setTransactions] = useLocalStorage(
@@ -133,12 +92,11 @@ export function AppProvider({ children }) {
     [setSubscriptions]
   );
 
-  const loadSampleData = useCallback(() => {
-    const sample = buildSampleData();
-    setTransactions((prev) => [...sample.transactions, ...prev]);
-    setSubscriptions((prev) => [...prev, ...sample.subscriptions]);
-    setBudgets((prev) => ({ ...sample.budgets, ...prev }));
-  }, [setTransactions, setSubscriptions, setBudgets]);
+  const clearAll = useCallback(() => {
+    setTransactions([]);
+    setBudgets({});
+    setSubscriptions([]);
+  }, [setTransactions, setBudgets, setSubscriptions]);
 
   // `data` comes from parseBackup(): already sanitized, and only holds sections present in the file.
   const replaceAll = useCallback(
@@ -172,6 +130,7 @@ export function AppProvider({ children }) {
       subscriptions,
       replaceAll,
       mergeAll,
+      clearAll,
       addTransaction,
       updateTransaction,
       deleteTransaction,
@@ -181,7 +140,6 @@ export function AppProvider({ children }) {
       updateSubscription,
       deleteSubscription,
       markSubscriptionPaid,
-      loadSampleData,
     }),
     [
       transactions,
@@ -189,6 +147,7 @@ export function AppProvider({ children }) {
       subscriptions,
       replaceAll,
       mergeAll,
+      clearAll,
       addTransaction,
       updateTransaction,
       deleteTransaction,
@@ -198,7 +157,6 @@ export function AppProvider({ children }) {
       updateSubscription,
       deleteSubscription,
       markSubscriptionPaid,
-      loadSampleData,
     ]
   );
 

@@ -40,7 +40,7 @@ docker run -p 8080:8080 expense-planner   # http://localhost:8080 (unprivileged 
 | `expense-planner:budgets` | Object map `{ [expenseCategory]: monthlyLimit }` |
 | `expense-planner:subscriptions` | Array of `{id, name, cost, cycle, nextDue, lastPaid, anchorDay}` (`cycle`: weekly, biweekly, monthly, quarterly, yearly) |
 | `expense-planner:tab` | Last active tab id |
-| `expense-planner:pre-import-backup` | Safety copy (backup-file format) of your data, written just before an import **replaces** it |
+| `expense-planner:pre-import-backup` | Safety copy (backup-file format) of your data, written just before an import **replaces** it or **Delete all data** runs |
 | `<key>:corrupt-backup` | Raw copy of a stored value that was unreadable or had records dropped by validation, written before it is overwritten |
 
 If `localStorage` is blocked or full, the app keeps working in memory and shows a warning banner. Reads go through `src/hooks/useLocalStorage.js` and `src/utils/sanitize.js`: corrupt JSON, wrong shapes, or blocked storage fall back to empty defaults and invalid items are dropped. All keys are defined in `src/constants/storage.js`. The calculator keeps no persistent state of its own.
@@ -95,6 +95,7 @@ src/
 ### Conventions
 
 - Dates are local `YYYY-MM-DD` strings, never UTC timestamps (`src/utils/dates.js`), limited to 1900-2100.
+- Amount fields use `components/ui/MoneyInput` (a text field with a numeric keypad, not `type="number"`, which behaves inconsistently across Safari/Firefox/iOS and comma-decimal locales). It accepts `.` or `,`, drops other characters, and allows 2 decimals; `parseAmount` understands both separators. Pasting goes through `normalizePastedAmount`, which understands thousands separators (`1,234.56` and `1.234,56` both become 1234.56).
 - Money is validated with `parseMoney` and summed in integer cents (`src/utils/money.js`). Never save an amount that rounds to 0.00: the loader drops those records.
 - Anything that depends on "today" or "this month" must take it from `useToday()` so a window left open past midnight stays correct.
 - Subscription `anchorDay` keeps monthly/quarterly/yearly bills from drifting after a short month (Jan 31 > Feb 28 > Mar 31).

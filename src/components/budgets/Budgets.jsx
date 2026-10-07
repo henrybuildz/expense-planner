@@ -11,6 +11,7 @@ import CategoryBadge from '../ui/CategoryBadge';
 import EmptyState from '../ui/EmptyState';
 import Field from '../ui/Field';
 import Icon from '../ui/Icon';
+import MoneyInput from '../ui/MoneyInput';
 
 const WARN_AT = 80;
 const OVER_AT = 100;
@@ -93,15 +94,11 @@ export default function Budgets() {
           </select>
         </Field>
         <Field label={`Monthly limit (${CURRENCY.symbol})`} htmlFor="b-limit" error={errors.limit}>
-          <input
+          <MoneyInput
             id="b-limit"
-            type="number"
-            inputMode="decimal"
-            min="0"
-            step="0.01"
             placeholder="0.00"
             value={limit}
-            onChange={(e) => setLimit(e.target.value)}
+            onChange={setLimit}
             className={`input ${errors.limit ? 'input-error' : ''}`}
           />
         </Field>

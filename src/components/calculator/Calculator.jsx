@@ -8,6 +8,7 @@ import { formatMoney } from '../../utils/format';
 import { parseMoney } from '../../utils/money';
 import Field from '../ui/Field';
 import TypeToggle from '../ui/TypeToggle';
+import MoneyInput from '../ui/MoneyInput';
 
 const MAX_PAYMENTS = 10000;
 
@@ -116,15 +117,11 @@ export default function Calculator() {
         <TypeToggle value={type} onChange={changeType} name="calc-type" />
 
         <Field label={`Amount (${CURRENCY.symbol})`} htmlFor="c-amount" error={amountError}>
-          <input
+          <MoneyInput
             id="c-amount"
-            type="number"
-            inputMode="decimal"
-            min="0"
-            step="0.01"
             placeholder="50"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={setAmount}
             className={`input ${amountError ? 'input-error' : ''}`}
             aria-invalid={!!amountError}
           />
@@ -166,15 +163,12 @@ export default function Calculator() {
           htmlFor="c-payments"
           error={paymentsError}
         >
-          <input
+          <MoneyInput
             id="c-payments"
-            type="number"
-            inputMode="numeric"
-            min="1"
-            step="1"
+            integer
             placeholder="e.g. 12"
             value={payments}
-            onChange={(e) => setPayments(e.target.value)}
+            onChange={setPayments}
             className={`input ${paymentsError ? 'input-error' : ''}`}
             aria-invalid={!!paymentsError}
           />

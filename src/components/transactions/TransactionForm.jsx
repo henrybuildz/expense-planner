@@ -5,6 +5,7 @@ import { MAX_DATE, MIN_DATE, isValidISO, todayISO } from '../../utils/dates';
 import { parseMoney } from '../../utils/money';
 import Field from '../ui/Field';
 import TypeToggle from '../ui/TypeToggle';
+import MoneyInput from '../ui/MoneyInput';
 
 const blank = () => ({ type: 'expense', amount: '', category: '', date: todayISO(), notes: '' });
 
@@ -63,15 +64,11 @@ export default function TransactionForm({ editing, onSubmit, onCancel }) {
       <TypeToggle value={form.type} onChange={setType} />
 
       <Field label={`Amount (${CURRENCY.symbol})`} htmlFor="tx-amount" error={errors.amount}>
-        <input
+        <MoneyInput
           id="tx-amount"
-          type="number"
-          inputMode="decimal"
-          min="0"
-          step="0.01"
           placeholder="0.00"
           value={form.amount}
-          onChange={set('amount')}
+          onChange={(v) => setForm((f) => ({ ...f, amount: v }))}
           className={`input ${invalid('amount')}`}
           aria-invalid={!!errors.amount}
         />

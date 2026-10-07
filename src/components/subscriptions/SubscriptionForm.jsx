@@ -4,6 +4,7 @@ import { CYCLES } from '../../constants/periods';
 import { MAX_DATE, MIN_DATE, isValidISO, todayISO } from '../../utils/dates';
 import { parseMoney } from '../../utils/money';
 import Field from '../ui/Field';
+import MoneyInput from '../ui/MoneyInput';
 
 const blank = () => ({ name: '', cost: '', cycle: 'monthly', nextDue: todayISO() });
 
@@ -57,15 +58,11 @@ export default function SubscriptionForm({ editing, onSubmit, onCancel }) {
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label={`Cost (${CURRENCY.symbol})`} htmlFor="s-cost" error={errors.cost}>
-          <input
+          <MoneyInput
             id="s-cost"
-            type="number"
-            inputMode="decimal"
-            min="0"
-            step="0.01"
             placeholder="0.00"
             value={form.cost}
-            onChange={set('cost')}
+            onChange={(v) => setForm((f) => ({ ...f, cost: v }))}
             className={cls('cost')}
           />
         </Field>
