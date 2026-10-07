@@ -4,7 +4,7 @@ Client-side-only expense planner: React 18 + Vite 5 + Tailwind CSS 3. No backend
 
 ## Commands
 
-Requires Node.js 18+ (developed on Node 24).
+Requires Node.js 18+ (developed on Node 24; the Dockerfile and GitHub Actions workflow also use Node 24).
 
 ```bash
 npm install        # install dependencies
@@ -77,7 +77,7 @@ src/
   components/
     backup/           DataBackup (export / import)
     ui/               Icon, Field, CategoryBadge, EmptyState, TypeToggle
-    dashboard/        Dashboard, DonutChart (SVG), MonthlyBars (SVG)
+    dashboard/        Dashboard, WeekSummary (Mon-Sun income/expenses), DonutChart (SVG), MonthlyBars (SVG)
     transactions/     Transactions (list, search, filters), TransactionForm
     budgets/          Budgets (progress cards, 80% / 100% alerts)
     subscriptions/    Subscriptions (list, totals, due dates), SubscriptionForm
@@ -86,11 +86,11 @@ src/
 
 ### Data flow
 
-`AppContext` owns the three data sets and exposes add/update/delete actions. Dashboard and Budgets derive everything from `transactions` (no duplicated totals), so a new transaction updates both immediately. Budgets use the current calendar month only.
+`AppContext` owns the three data sets and exposes add/update/delete actions. Dashboard and Budgets derive everything from `transactions` (no duplicated totals), so a new transaction updates both immediately. Budgets use the current calendar month only. The Dashboard's week card runs Monday to Sunday (`startOfWeek` in `src/utils/dates.js`, `weekSummary` in `src/utils/stats.js`) and can step back through earlier weeks.
 
 ### Calculator module
 
-`src/components/calculator/Calculator.jsx` projects an amount across periods. All conversions go through a yearly amount using the factors in `src/constants/periods.js`: daily 365, weekly 52, bi-weekly 26, monthly 12, quarterly 4, yearly 1. `result = amount x perYear[entered] / perYear[target]`, and each result card shows its formula. The optional "Save as transaction" (dated today) and "Save as subscription" (expense, non-daily periods) buttons call the shared `addTransaction` / `addSubscription` actions.
+`src/components/calculator/Calculator.jsx` projects an amount across periods. All conversions go through a yearly amount using the factors in `src/constants/periods.js`: daily 365, weekly 52, bi-weekly 26, monthly 12, quarterly 4, yearly 1. `result = amount x perYear[entered] / perYear[target]`, and each result card shows its formula. Amounts use the same `parseMoney` rule as every form (rounded to cents, minimum 0.01), so displayed figures always match the maths. An optional "For how many payments?" field adds a total over time (`amount x payments`, plus the months/weeks it covers). The optional "Save as transaction" (dated today) and "Save as subscription" (expense, non-daily periods) buttons call the shared `addTransaction` / `addSubscription` actions.
 
 ### Conventions
 

@@ -1,4 +1,4 @@
-import { currentMonthKey, lastMonthKeys, monthKey, monthLabel, todayISO } from './dates';
+import { addDays, currentMonthKey, lastMonthKeys, monthKey, monthLabel, todayISO } from './dates';
 import { sumMoney, toCents } from './money';
 
 const total = (list) => sumMoney(list.map((t) => t.amount));
@@ -15,6 +15,22 @@ export function spendingByCategory(transactions, month = currentMonthKey()) {
   return [...cents.entries()]
     .map(([name, c]) => ({ name, amount: c / 100, pct: grand ? (c / grand) * 100 : 0 }))
     .sort((a, b) => b.amount - a.amount);
+}
+
+// Income, expenses and net for the Monday-to-Sunday week starting at `weekStart`.
+export function weekSummary(transactions, weekStart) {
+  const weekEnd = addDays(weekStart, 6);
+  const inWeek = transactions.filter((t) => t.date >= weekStart && t.date <= weekEnd); // ISO strings sort correctly
+  const income = total(inWeek.filter((t) => t.type === 'income'));
+  const expense = total(inWeek.filter((t) => t.type === 'expense'));
+  return {
+    weekStart,
+    weekEnd,
+    income,
+    expense,
+    net: (toCents(income) - toCents(expense)) / 100,
+    count: inWeek.length,
+  };
 }
 
 export function summarize(transactions, today = todayISO()) {

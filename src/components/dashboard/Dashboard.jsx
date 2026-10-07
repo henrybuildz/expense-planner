@@ -9,6 +9,7 @@ import CategoryBadge from '../ui/CategoryBadge';
 import EmptyState from '../ui/EmptyState';
 import DonutChart from './DonutChart';
 import MonthlyBars from './MonthlyBars';
+import WeekSummary from './WeekSummary';
 
 function Metric({ label, value, hint, tone }) {
   const tones = {
@@ -87,6 +88,8 @@ export default function Dashboard({ onNavigate }) {
           tone={stats.net >= 0 ? 'emerald' : 'rose'}
         />
       </section>
+
+      <WeekSummary transactions={transactions} today={today} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="card" aria-labelledby="by-category">

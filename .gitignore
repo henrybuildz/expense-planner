@@ -2,3 +2,6 @@ node_modules
 dist
 .DS_Store
 *.log
+
+# stray duplicate of this project that the desktop app created inside it
+/expense-planner/

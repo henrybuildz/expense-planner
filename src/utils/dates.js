@@ -62,6 +62,12 @@ export function addCycle(iso, cycle, anchorDay) {
   }
 }
 
+// Weeks run Monday to Sunday. Returns the Monday on or before `iso`.
+export function startOfWeek(iso) {
+  const daysSinceMonday = (parseISO(iso).getDay() + 6) % 7; // getDay(): 0 = Sunday
+  return addDays(iso, -daysSinceMonday);
+}
+
 export function daysUntil(iso, today = todayISO()) {
   return Math.round((parseISO(iso) - parseISO(today)) / 86400000);
 }

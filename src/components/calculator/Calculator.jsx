@@ -4,10 +4,19 @@ import { categoriesFor } from '../../constants/categories';
 import { CURRENCY } from '../../constants/currency';
 import { PERIODS, isCycle, periodById } from '../../constants/periods';
 import { addCycle, todayISO } from '../../utils/dates';
-import { formatMoney, parseAmount } from '../../utils/format';
-import { MAX_AMOUNT, parseMoney } from '../../utils/money';
+import { formatMoney } from '../../utils/format';
+import { parseMoney } from '../../utils/money';
 import Field from '../ui/Field';
 import TypeToggle from '../ui/TypeToggle';
+
+const MAX_PAYMENTS = 10000;
+
+// (2.75, 'month') -> "2.8 months", (1, 'week') -> "1 week"
+function span(n, unit) {
+  const rounded = Number(n.toFixed(1));
+  const text = rounded.toLocaleString(CURRENCY.locale, { maximumFractionDigits: 1 });
+  return `${text} ${unit}${rounded === 1 ? '' : 's'}`;
+}
 
 const TARGETS = [
   { id: 'all', label: 'All periods' },
@@ -23,6 +32,7 @@ export default function Calculator() {
   const [period, setPeriod] = useState('weekly');
   const [type, setType] = useState('expense');
   const [target, setTarget] = useState('all');
+  const [payments, setPayments] = useState('');
   const [label, setLabel] = useState('');
   const [category, setCategory] = useState('');
   const [saveError, setSaveError] = useState('');
@@ -34,16 +44,25 @@ export default function Calculator() {
     return () => clearTimeout(t);
   }, [notice]);
 
-  const value = parseAmount(amount);
-  const amountError =
-    amount === ''
+  // Same rule as every other form: whole cents, at least 0.01. Rounding to cents up front
+  // keeps what is shown consistent with the maths (33.333 used to display as 33.33 but multiply as
+  // 33.333, so "33.33 x 3 = 100.00" appeared on screen).
+  const parsed = amount === '' ? null : parseMoney(amount);
+  const amountError = parsed ? parsed.error || '' : '';
+  const valid = !!parsed && !parsed.error;
+  const value = valid ? parsed.value : NaN;
+
+  // Optional: "for N payments" turns a recurring amount into a total over time.
+  const count = Number(payments);
+  const paymentsError =
+    payments === ''
       ? ''
-      : !Number.isFinite(value) || value <= 0
-        ? 'Enter a number greater than 0.'
-        : value > MAX_AMOUNT
-          ? 'Amount is too large.'
+      : !Number.isInteger(count) || count < 1
+        ? 'Enter a whole number of payments, 1 or more.'
+        : count > MAX_PAYMENTS
+          ? `Keep it to ${MAX_PAYMENTS.toLocaleString()} payments or fewer.`
           : '';
-  const valid = amount !== '' && !amountError;
+  const hasPayments = valid && payments !== '' && !paymentsError;
 
   const from = periodById(period);
   const annual = valid ? value * from.perYear : 0;
@@ -63,13 +82,11 @@ export default function Calculator() {
   };
 
   const saveTransaction = () => {
-    // Saved records must be real money (>= 0.01); projections may use any positive number.
-    const money = parseMoney(amount);
-    if (money.error) return setSaveError(money.error);
+    if (!valid) return setSaveError(amountError || 'Enter an amount first.');
     if (!category) return setSaveError('Choose a category to save.');
     addTransaction({
       type,
-      amount: money.value,
+      amount: value,
       category,
       date: todayISO(),
       notes: label.trim() || `${formatMoney(value)} ${from.label.toLowerCase()} (calculator)`,
@@ -79,12 +96,11 @@ export default function Calculator() {
   };
 
   const saveSubscription = () => {
-    const money = parseMoney(amount);
-    if (money.error) return setSaveError(money.error);
+    if (!valid) return setSaveError(amountError || 'Enter an amount first.');
     if (!label.trim()) return setSaveError('Add a label — it becomes the subscription name.');
     addSubscription({
       name: label.trim(),
-      cost: money.value,
+      cost: value,
       cycle: period,
       nextDue: addCycle(todayISO(), period),
     });
@@ -145,6 +161,25 @@ export default function Calculator() {
           </Field>
         </div>
 
+        <Field
+          label={`For how many payments? (optional)`}
+          htmlFor="c-payments"
+          error={paymentsError}
+        >
+          <input
+            id="c-payments"
+            type="number"
+            inputMode="numeric"
+            min="1"
+            step="1"
+            placeholder="e.g. 12"
+            value={payments}
+            onChange={(e) => setPayments(e.target.value)}
+            className={`input ${paymentsError ? 'input-error' : ''}`}
+            aria-invalid={!!paymentsError}
+          />
+        </Field>
+
         <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
           <p className="font-medium text-slate-700">Conversion factors (periods per year)</p>
           <p className="mt-1">
@@ -197,6 +232,22 @@ export default function Calculator() {
                   );
                 })}
               </ul>
+              {hasPayments && (
+                <div className="mt-4 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Total over {count} {from.label.toLowerCase()} payment{count === 1 ? '' : 's'}
+                  </p>
+                  <p className={`mt-1 text-2xl font-semibold tabular-nums ${accent}`}>
+                    {income ? '+' : '−'}
+                    {formatMoney(value * count)}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {formatMoney(value)} × {count} payment{count === 1 ? '' : 's'} · covers about{' '}
+                    {span((count * 12) / from.perYear, 'month')} (
+                    {span((count * 52) / from.perYear, 'week')})
+                  </p>
+                </div>
+              )}
               <p className="mt-4 text-xs text-slate-500">
                 Formula: amount × (periods per year of the entered period) ÷ (periods per year of the
                 target period). Results are rounded to cents for display only.
