@@ -1,0 +1,84 @@
+// Defensive parsers for data read back from localStorage OR imported from a backup
+// file (both are untrusted). Each takes whatever JSON.parse produced and returns a
+// clean value, silently dropping bad items. Returning undefined means "unusable".
+import { EXPENSE_CATEGORIES } from '../constants/categories';
+import { isCycle } from '../constants/periods';
+import { isTabId } from '../constants/tabs';
+import { MAX_AMOUNT } from './money';
+import { isValidISO } from './dates';
+
+const isMoney = (n) => typeof n === 'number' && Number.isFinite(n) && n > 0 && n <= MAX_AMOUNT;
+const isObject = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
+const isText = (s) => typeof s === 'string' && s.trim() !== '';
+const BUDGET_KEYS = new Set(EXPENSE_CATEGORIES.map((c) => c.name));
+
+// Keeps the first record for each id: duplicate ids would break React keys and edit/delete.
+function uniqueById(list) {
+  const seen = new Set();
+  return list.filter((item) => !seen.has(item.id) && seen.add(item.id));
+}
+
+export function sanitizeTransactions(raw) {
+  if (!Array.isArray(raw)) return undefined;
+  return uniqueById(
+    raw
+      .filter(
+        (t) =>
+          isObject(t) &&
+          isText(t.id) &&
+          (t.type === 'income' || t.type === 'expense') &&
+          isMoney(t.amount) &&
+          isValidISO(t.date) &&
+          isText(t.category)
+      )
+      .map((t) => ({
+        id: t.id.slice(0, 64),
+        type: t.type,
+        amount: t.amount,
+        category: t.category.slice(0, 40),
+        date: t.date,
+        notes: typeof t.notes === 'string' ? t.notes.slice(0, 200) : '',
+      }))
+  );
+}
+
+export function sanitizeBudgets(raw) {
+  if (!isObject(raw)) return undefined;
+  const out = {};
+  Object.entries(raw).forEach(([category, limit]) => {
+    // Only real expense categories: also blocks odd keys such as "__proto__".
+    if (BUDGET_KEYS.has(category) && isMoney(limit)) out[category] = limit;
+  });
+  return out;
+}
+
+export function sanitizeSubscriptions(raw) {
+  if (!Array.isArray(raw)) return undefined;
+  return uniqueById(
+    raw
+      .filter(
+        (s) =>
+          isObject(s) &&
+          isText(s.id) &&
+          isText(s.name) &&
+          isMoney(s.cost) &&
+          isCycle(s.cycle) &&
+          isValidISO(s.nextDue)
+      )
+      .map((s) => ({
+        id: s.id.slice(0, 64),
+        name: s.name.slice(0, 60),
+        cost: s.cost,
+        cycle: s.cycle,
+        nextDue: s.nextDue,
+        lastPaid: isValidISO(s.lastPaid) ? s.lastPaid : '',
+        // Day-of-month the bill is meant to fall on (prevents month-end drift).
+        anchorDay:
+          Number.isInteger(s.anchorDay) && s.anchorDay >= 1 && s.anchorDay <= 31
+            ? s.anchorDay
+            : Number(s.nextDue.slice(8)),
+      }))
+  );
+}
+
+export const sanitizeTab = (raw) => (isTabId(raw) ? raw : undefined);
