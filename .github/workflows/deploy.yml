@@ -29,6 +29,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # A failing test stops the deploy: nothing below runs, so the live site stays on the last good version.
+      - run: npm test
       - run: npm run build
         env:
           # Public values, stored as repository *variables* (Settings > Secrets and variables > Actions).

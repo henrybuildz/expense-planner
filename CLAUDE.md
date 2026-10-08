@@ -9,6 +9,9 @@ Requires Node.js 22+ (developed on Node 24; the Dockerfile and GitHub Actions wo
 ```bash
 npm install        # install dependencies
 npm run dev        # dev server with hot reload (http://localhost:5173)
+npm test           # run the automated test suite once (also runs in CI before every deploy)
+npm run test:watch # re-run tests on save while developing
+npm run test:coverage # tests plus a coverage table (coverage/index.html)
 npm run build      # production build into dist/
 npm run preview    # serve dist/ locally (http://localhost:4173) - use this to test the PWA
 ```
@@ -132,12 +135,33 @@ Open **Settings** (click the Pocket Book title, or its gear icon) for **Export d
 
 Import validates the file (`src/utils/backup.js`) with the same sanitizers used for localStorage, skips and counts invalid records, warns if the backup's currency differs, then asks **Merge** (add records whose id you don't have; an imported budget replaces the same category's budget) or **Replace** (overwrites the sections present in the file, after saving a safety copy). Files over 5 MB are refused. Increase `BACKUP_VERSION` and add a migration if the stored format ever changes.
 
+## Tests
+
+Vitest 3 + jsdom + React Testing Library (Vitest 5 needs Vite 6, so it is pinned to 3.x while the app is on Vite 5). `npm test` runs everything in about two seconds; GitHub Actions runs it before `npm run build`, so a red test blocks the deploy.
+
+```
+tests/
+  setup.js              jest-dom matchers, URL.createObjectURL stub, clears storage after each test
+  helpers/fakeServer.js fake Supabase (server-stamped time, soft deletes, RLS, paging, injectable failures) + `device()`
+  dates / money / sanitize / backup / stats / rescue / storage .test.js   pure logic
+  sync/engine.test.js   two or three devices syncing against the fake server
+  sync/remote.test.js   remote.js against the REAL supabase-js client with a recording fetch (URLs, headers, bodies, paging)
+  components/           crash screen, undo bar, money input, AppContext actions, App smoke test
+```
+
+- Supabase is disabled in tests (`VITE_SUPABASE_*` are empty in `vite.config.js`), so nothing touches the network.
+- Each test starts with empty `localStorage`. The logic tests pass "today" in as an argument, so they do not depend on the clock; the App smoke test uses the real date and asserts nothing date-specific.
+- Many tests are named after a real bug (month-end drift, `1,234.56` pasted as 1.23, Undo erasing new records, skipped late rows, local data loss wiping the account). When fixing a bug, add the test that would have caught it.
+- Mutation check: temporarily re-introduce a past bug in `src/` and confirm a test fails (32 such mutations were verified when the suite was written; one real gap was found and closed that way). A test that cannot fail is not protecting anything.
+- Not covered: real browsers (layout, the service worker, install prompt), the real Supabase service and Google sign-in, `SyncContext` (timers and OAuth glue), and most screen visuals. Check these by hand after changing them, in a production build (`npm run build && npm run preview`).
+
 ## Project structure
 
 ```
 index.html, vite.config.js, tailwind.config.js, postcss.config.js
 public/               manifest.json, sw.js, splash.js, favicon.svg, icons/
 scripts/              generate_icons.py
+tests/                Vitest suite (see Tests)
 src/
   main.jsx            entry point + service worker registration
   App.jsx             full-width layout, tab navigation (plain state, no router), Settings view

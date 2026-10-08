@@ -47,5 +47,20 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       sourcemap: false,
     },
+    // Unit and component tests (npm test). jsdom gives them a browser-like page and a real localStorage.
+    test: {
+      environment: 'jsdom',
+      setupFiles: ['./tests/setup.js'],
+      include: ['tests/**/*.test.{js,jsx}'],
+      // Tests must NEVER reach a real Supabase project, whatever is in .env.local.
+      env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_PUBLISHABLE_KEY: '' },
+      restoreMocks: true,
+      coverage: {
+        provider: 'v8',
+        include: ['src/**/*.{js,jsx}'],
+        exclude: ['src/main.jsx'],
+        reporter: ['text', 'html'],
+      },
+    },
   };
 });
