@@ -72,6 +72,17 @@ Off unless `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are set at bu
 - Not end-to-end encrypted: data is stored on Supabase's servers. Free-plan projects pause after about a week of low activity.
 - Security policy: `nginx.conf` sends a Content-Security-Policy header (`connect-src https://*.supabase.co`). GitHub Pages cannot send headers, so production builds embed the same policy as a `<meta>` tag (`vite.config.js`, build only, limited to the exact `VITE_SUPABASE_URL` origin). `frame-ancestors` cannot be set via `<meta>`, so clickjacking protection exists only behind nginx. Update the policy in both places if you add an external origin.
 
+## Undo bar
+
+Deleting a transaction, budget or subscription happens immediately (no confirm pop-up) and a dark bar slides up from the bottom: "Expense deleted, EUR 12.50 · Food ... Undo" (`src/context/UndoContext.jsx`, `src/components/ui/UndoBar.jsx`). Components call `notify({ message, detail, onUndo, duration? })` right after deleting, with `onUndo` calling the matching `restore*` action from `AppContext` (`restoreTransaction`, `restoreBudget`, `restoreSubscription`).
+
+- The restore actions put back exactly what was deleted (same id, same fields), never create a duplicate and never overwrite something created in its place since.
+- A thin line under each bar shows the time left (6 s). Hovering or focusing the bar pauses the countdown. Bars stack (up to 5). Cmd/Ctrl+Z undoes the newest one, except while typing in a text field.
+- **Delete all data** and a **Replace** import keep their confirmation and ALSO get an Undo bar (12 s). They call `permitMassDelete()` so the sync safety brake does not block them. Undo never restores a whole snapshot over the current lists, because that would erase anything added since: Delete-all's Undo *merges* the old records back (`mergeAll`), and a Replace's Undo (`undoReplace` in `AppContext`) removes the imported records and puts the previous ones back while keeping anything created since.
+- `dismissAll()` closes every pending bar without undoing. "Sign out and remove data from this device" and the discard-other-account path call it, so a leftover Undo can never restore data onto a device that was just wiped (`UndoProvider` therefore sits above `SyncProvider`).
+- Accessibility: the bars live in one `aria-live="polite"` region (no nested `role=status`, so they are announced once) and carry a screen-reader hint about Ctrl/Cmd+Z.
+- Works with sync: undoing after the delete has already reached the account re-adds the record, which the next sync pushes as a normal upsert (`deleted_at: null`), so it reappears on every device.
+
 ## Launch splash
 
 A green screen where the three logo bars pop up one after another, "Pocket Book" fades in, and the screen lifts away like a curtain (about 2.2 s). It is plain HTML + CSS inside `index.html` (so it paints instantly, before any JavaScript loads) plus a tiny controller, `public/splash.js` (external because the CSP only allows scripts from this site; it must also stay in the service worker's `SHELL` list so it works offline).
@@ -112,6 +123,7 @@ src/
   index.css           Tailwind layers + shared component classes (.card, .input, .btn...)
   context/AppContext.jsx   single shared state: transactions, budgets, subscriptions + actions
   context/SyncContext.jsx  auth + sync orchestration (sign-in, triggers, status)
+  context/UndoContext.jsx  undo bar state (notify, Cmd/Ctrl+Z)
   hooks/useLocalStorage.js persistence hook (validated read, cross-tab sync)
   sync/               engine (push/pull logic), tables (row mapping), remote (Supabase calls), meta (bookkeeping)
   lib/supabase.js     the Supabase client (null when not configured)
@@ -121,7 +133,7 @@ src/
     settings/         Settings (opened from the Pocket Book title; hosts Account + Backup + About)
     account/          AccountSync (Google sign-in, sync status)
     backup/           DataBackup (export / import)
-    ui/               Icon, Field, CategoryBadge, EmptyState, TypeToggle
+    ui/               Icon, Field, CategoryBadge, EmptyState, TypeToggle, MoneyInput, UndoBar
     dashboard/        Dashboard, WeekSummary (Mon-Sun income/expenses), DonutChart (SVG), MonthlyBars (SVG)
     transactions/     Transactions (list, search, filters), TransactionForm
     budgets/          Budgets (progress cards, 80% / 100% alerts)

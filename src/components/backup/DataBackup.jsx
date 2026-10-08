@@ -4,6 +4,7 @@ import { KEYS } from '../../constants/storage';
 import { MAX_IMPORT_BYTES, buildBackup, parseBackup } from '../../utils/backup';
 import { todayISO } from '../../utils/dates';
 import { useSync } from '../../context/SyncContext';
+import { useUndo } from '../../context/UndoContext';
 import Icon from '../ui/Icon';
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -18,9 +19,10 @@ const countText = (data) =>
     .join(', ');
 
 export default function DataBackup() {
-  const { transactions, budgets, subscriptions, replaceAll, mergeAll, clearAll } = useApp();
+  const { transactions, budgets, subscriptions, replaceAll, mergeAll, clearAll, undoReplace } = useApp();
   const isEmpty = !transactions.length && !Object.keys(budgets).length && !subscriptions.length;
   const { signedIn, permitMassDelete } = useSync();
+  const { notify } = useUndo();
   const fileInput = useRef(null);
   const [pending, setPending] = useState(null); // a validated file waiting for the user's choice
   const [message, setMessage] = useState(null); // { ok: boolean, text: string }
@@ -82,18 +84,42 @@ export default function DataBackup() {
     const what = countText({ transactions, budgets, subscriptions });
     const synced = signedIn ? ' Because you are signed in, this ALSO deletes your synced copy on all your devices.' : '';
     if (!window.confirm(`Delete ALL your data (${what})?${synced} This cannot be undone. Export first if you want a copy.`)) return;
+    const before = { transactions, budgets, subscriptions }; // what to put back on Undo
     saveSafetyCopy();
     permitMassDelete(); // deliberate: tell the sync safety brake this big delete is intended
     clearAll();
     setPending(null);
     setMessage({ ok: true, text: 'All data deleted.' });
+    notify({
+      message: 'All data deleted',
+      detail: what,
+      duration: 12000, // longer than a single delete: this one is big
+      onUndo: () => {
+        mergeAll(before); // put the old records back ALONGSIDE anything added since; never overwrite
+        setMessage({ ok: true, text: 'Your data was restored.' });
+      },
+    });
   };
 
   const apply = (mode) => {
     if (mode === 'replace') {
       saveSafetyCopy();
       permitMassDelete(); // a Replace can legitimately remove many records
-      replaceAll(pending.data);
+      // remember the sections being replaced, so Undo can put them back
+      const current = { transactions, budgets, subscriptions };
+      const before = Object.fromEntries(Object.keys(pending.data).map((key) => [key, current[key]]));
+      const imported = pending.data;
+      replaceAll(imported);
+      notify({
+        message: 'Data replaced from backup',
+        detail: countText(pending.data),
+        duration: 12000,
+        onUndo: () => {
+          permitMassDelete(); // undoing a replace removes the imported records again
+          undoReplace(imported, before);
+          setMessage({ ok: true, text: 'Your previous data was restored.' });
+        },
+      });
     } else {
       mergeAll(pending.data);
     }

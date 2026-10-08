@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useUndo } from '../../context/UndoContext';
 import { ALL_CATEGORIES } from '../../constants/categories';
 import { formatDate } from '../../utils/dates';
 import { formatMoney } from '../../utils/format';
@@ -13,7 +14,8 @@ import TransactionForm from './TransactionForm';
 const PAGE_SIZE = 100;
 
 export default function Transactions() {
-  const { transactions, addTransaction, updateTransaction, deleteTransaction } = useApp();
+  const { transactions, addTransaction, updateTransaction, deleteTransaction, restoreTransaction } = useApp();
+  const { notify } = useUndo();
   const [editingId, setEditingId] = useState(null);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('');
@@ -60,9 +62,13 @@ export default function Transactions() {
   };
 
   const handleDelete = (t) => {
-    if (!window.confirm(`Delete this ${t.type} of ${formatMoney(t.amount)}?`)) return;
     if (editingId === t.id) setEditingId(null);
     deleteTransaction(t.id);
+    notify({
+      message: t.type === 'income' ? 'Income deleted' : 'Expense deleted',
+      detail: `${formatMoney(t.amount)} \u00b7 ${t.category}`,
+      onUndo: () => restoreTransaction(t),
+    });
   };
 
   const filtersActive = query || category || type;

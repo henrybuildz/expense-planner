@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useUndo } from '../../context/UndoContext';
 import { EXPENSE_CATEGORIES } from '../../constants/categories';
 import { CURRENCY } from '../../constants/currency';
 import { currentMonthKey } from '../../utils/dates';
@@ -25,7 +26,8 @@ function tone(pct) {
 }
 
 export default function Budgets() {
-  const { transactions, budgets, setBudget, removeBudget } = useApp();
+  const { transactions, budgets, setBudget, removeBudget, restoreBudget } = useApp();
+  const { notify } = useUndo();
   const [category, setCategory] = useState('');
   const [limit, setLimit] = useState('');
   const [errors, setErrors] = useState({});
@@ -168,7 +170,12 @@ export default function Budgets() {
                         type="button"
                         className="btn-icon hover:!text-rose-600"
                         onClick={() => {
-                          if (window.confirm(`Remove the ${r.name} budget?`)) removeBudget(r.name);
+                          removeBudget(r.name);
+                          notify({
+                            message: 'Budget removed',
+                            detail: `${r.name} \u00b7 ${formatMoney(r.cap)} a month`,
+                            onUndo: () => restoreBudget(r.name, r.cap),
+                          });
                         }}
                         aria-label={`Remove ${r.name} budget`}
                       >

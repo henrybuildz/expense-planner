@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useUndo } from '../../context/UndoContext';
 import { convert, periodById, toAnnual } from '../../constants/periods';
 import { daysUntil, formatDate } from '../../utils/dates';
 import { useToday } from '../../hooks/useToday';
@@ -29,8 +30,10 @@ export default function Subscriptions() {
     addSubscription,
     updateSubscription,
     deleteSubscription,
+    restoreSubscription,
     markSubscriptionPaid,
   } = useApp();
+  const { notify } = useUndo();
   const [editingId, setEditingId] = useState(null);
   const today = useToday(); // due badges stay correct across midnight
   const editing = subscriptions.find((s) => s.id === editingId) || null;
@@ -141,9 +144,13 @@ export default function Subscriptions() {
                         type="button"
                         className="btn-icon hover:!text-rose-600"
                         onClick={() => {
-                          if (!window.confirm(`Delete ${s.name}?`)) return;
                           if (editingId === s.id) setEditingId(null);
                           deleteSubscription(s.id);
+                          notify({
+                            message: `${s.name} deleted`,
+                            detail: `${formatMoney(s.cost)} ${periodById(s.cycle).label.toLowerCase()}`,
+                            onUndo: () => restoreSubscription(s),
+                          });
                         }}
                         aria-label={`Delete ${s.name}`}
                       >

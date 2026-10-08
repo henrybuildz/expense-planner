@@ -43,6 +43,24 @@ export function AppProvider({ children }) {
     [setTransactions]
   );
 
+  // Undo support: put back exactly what was deleted (same id, same fields). Never creates a duplicate,
+  // and never overwrites something the user has since created in its place.
+  const restoreTransaction = useCallback(
+    (t) => setTransactions((prev) => (prev.some((x) => x.id === t.id) ? prev : [t, ...prev])),
+    [setTransactions]
+  );
+  const restoreBudget = useCallback(
+    (category, limit) =>
+      setBudgets((prev) =>
+        Object.prototype.hasOwnProperty.call(prev, category) ? prev : { ...prev, [category]: limit }
+      ),
+    [setBudgets]
+  );
+  const restoreSubscription = useCallback(
+    (s) => setSubscriptions((prev) => (prev.some((x) => x.id === s.id) ? prev : [...prev, s])),
+    [setSubscriptions]
+  );
+
   const setBudget = useCallback(
     (category, limit) => setBudgets((prev) => ({ ...prev, [category]: limit })),
     [setBudgets]
@@ -102,6 +120,30 @@ export function AppProvider({ children }) {
     [setTransactions, setBudgets, setSubscriptions]
   );
 
+  // Undo of a Replace import: take the imported records back out and put the previous ones back, while
+  // leaving anything the user created since untouched (restoring a whole snapshot would erase it).
+  const undoReplace = useCallback(
+    (imported, before) => {
+      const idsOf = (list) => new Set((list || []).map((x) => x.id));
+      const swap = (prev, importedList, beforeList) => {
+        const drop = idsOf(importedList);
+        const kept = prev.filter((x) => !drop.has(x.id));
+        const have = idsOf(kept);
+        return [...beforeList.filter((x) => !have.has(x.id)), ...kept];
+      };
+      if (before.transactions) setTransactions((prev) => swap(prev, imported.transactions, before.transactions));
+      if (before.subscriptions) setSubscriptions((prev) => swap(prev, imported.subscriptions, before.subscriptions));
+      if (before.budgets) {
+        setBudgets((prev) => {
+          const next = { ...prev };
+          Object.keys(imported.budgets || {}).forEach((category) => delete next[category]);
+          return { ...next, ...before.budgets };
+        });
+      }
+    },
+    [setTransactions, setBudgets, setSubscriptions]
+  );
+
   const clearAll = useCallback(() => {
     setTransactions([]);
     setBudgets({});
@@ -141,10 +183,14 @@ export function AppProvider({ children }) {
       replaceAll,
       mergeAll,
       clearAll,
+      undoReplace,
       updateTable,
       addTransaction,
       updateTransaction,
       deleteTransaction,
+      restoreTransaction,
+      restoreBudget,
+      restoreSubscription,
       setBudget,
       removeBudget,
       addSubscription,
@@ -160,9 +206,13 @@ export function AppProvider({ children }) {
       replaceAll,
       mergeAll,
       clearAll,
+      undoReplace,
       addTransaction,
       updateTransaction,
       deleteTransaction,
+      restoreTransaction,
+      restoreBudget,
+      restoreSubscription,
       setBudget,
       removeBudget,
       addSubscription,

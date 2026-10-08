@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from './AppContext';
+import { useUndo } from './UndoContext';
 import { supabase, syncEnabled, urlAuthError } from '../lib/supabase';
 import { MassDeleteError, hasPendingChanges, runSync } from '../sync/engine';
 import { loadMeta } from '../sync/meta';
@@ -24,6 +25,7 @@ const errorText = (e) =>
 
 export function SyncProvider({ children }) {
   const app = useApp();
+  const { dismissAll } = useUndo(); // so wiping a device also closes any pending undo bars
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(!syncEnabled);
   const [status, setStatus] = useState('idle'); // idle | syncing | offline | error
@@ -101,6 +103,7 @@ export function SyncProvider({ children }) {
           if (!addIt) {
             meta.reset(current.id); // forget the old snapshot first so the wipe is not pushed as deletions
             latest.current.clearAll();
+            dismissAll();
             await waitUntil(() => TABLE_NAMES.every((n) => TABLES[n].toList(latest.current[n]).length === 0));
           }
         }
@@ -137,7 +140,7 @@ export function SyncProvider({ children }) {
       }
     }
     return succeeded;
-  }, [store]);
+  }, [store, dismissAll]);
 
   // Coalesces bursts of triggers (typing, focus + visibility events, ...) into a single sync.
   const requestSync = useCallback(
@@ -237,12 +240,13 @@ export function SyncProvider({ children }) {
       clearTimeout(timer.current);
       metaRef.current.reset(null);
       latest.current.clearAll();
+      dismissAll(); // a leftover Undo must not restore data onto a device that was just wiped
       setStatus('idle');
       setError('');
     } finally {
       wiping.current = false;
     }
-  }, [syncNow, getRecords]);
+  }, [syncNow, getRecords, dismissAll]);
 
   const value = useMemo(
     () => ({

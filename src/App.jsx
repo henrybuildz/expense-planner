@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppProvider } from './context/AppContext';
 import { SyncProvider } from './context/SyncContext';
+import { UndoProvider } from './context/UndoContext';
 import { TABS } from './constants/tabs';
 import { KEYS } from './constants/storage';
 import {
@@ -196,9 +197,11 @@ function Shell() {
 export default function App() {
   return (
     <AppProvider>
-      <SyncProvider>
-        <Shell />
-      </SyncProvider>
+      <UndoProvider>
+        <SyncProvider>
+          <Shell />
+        </SyncProvider>
+      </UndoProvider>
     </AppProvider>
   );
 }

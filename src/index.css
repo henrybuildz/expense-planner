@@ -37,3 +37,18 @@
     @apply rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50;
   }
 }
+
+/* Undo bar */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes toast-shrink {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+.toast-in { animation: toast-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.toast-bar { animation-name: toast-shrink; animation-timing-function: linear; animation-fill-mode: forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .toast-in { animation: none; }
+}
