@@ -7,6 +7,8 @@ import { useToday } from '../../hooks/useToday';
 import { formatMoney } from '../../utils/format';
 import { sumMoney } from '../../utils/money';
 import EmptyState from '../ui/EmptyState';
+import { Skeleton, SkeletonRows } from '../ui/Skeleton';
+import { useAccountLoading } from '../../context/SyncContext';
 import Icon from '../ui/Icon';
 import SubscriptionForm from './SubscriptionForm';
 
@@ -25,6 +27,7 @@ function dueInfo(nextDue, today) {
 }
 
 export default function Subscriptions() {
+  const loadingAccountData = useAccountLoading();
   const {
     subscriptions,
     addSubscription,
@@ -42,6 +45,7 @@ export default function Subscriptions() {
     () => [...subscriptions].sort((a, b) => a.nextDue.localeCompare(b.nextDue)),
     [subscriptions]
   );
+  const pending = sorted.length === 0 && loadingAccountData; // placeholders instead of zero totals
 
   const totals = useMemo(() => {
     const annual = subscriptions.reduce((acc, s) => acc + toAnnual(s.cost, s.cycle), 0);
@@ -68,24 +72,36 @@ export default function Subscriptions() {
       <section aria-label="Recurring cost summary" className="grid gap-4 sm:grid-cols-3">
         <div className="card border-l-4 border-rose-500">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Monthly overhead</p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums text-rose-600">
-            {formatMoney(totals.monthly)}
-          </p>
+          {pending ? (
+            <Skeleton className="mt-3 h-7 w-28" />
+          ) : (
+            <p className="mt-2 text-2xl font-semibold tabular-nums text-rose-600">
+              {formatMoney(totals.monthly)}
+            </p>
+          )}
         </div>
         <div className="card border-l-4 border-rose-500">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Annual overhead</p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums text-rose-600">
-            {formatMoney(totals.annual)}
-          </p>
+          {pending ? (
+            <Skeleton className="mt-3 h-7 w-28" />
+          ) : (
+            <p className="mt-2 text-2xl font-semibold tabular-nums text-rose-600">
+              {formatMoney(totals.annual)}
+            </p>
+          )}
         </div>
         <div className="card border-l-4 border-amber-400">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Due or overdue (7 days)</p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums">
-            {totals.soonCount}
-            <span className="ml-2 text-sm font-normal text-slate-500">
-              {formatMoney(totals.soonAmount)}
-            </span>
-          </p>
+          {pending ? (
+            <Skeleton className="mt-3 h-7 w-20" />
+          ) : (
+            <p className="mt-2 text-2xl font-semibold tabular-nums">
+              {totals.soonCount}
+              <span className="ml-2 text-sm font-normal text-slate-500">
+                {formatMoney(totals.soonAmount)}
+              </span>
+            </p>
+          )}
         </div>
       </section>
 
@@ -99,7 +115,9 @@ export default function Subscriptions() {
         </div>
 
         <section className="card min-w-0" aria-label="Subscriptions">
-          {sorted.length === 0 ? (
+          {sorted.length === 0 && loadingAccountData ? (
+            <SkeletonRows rows={3} label="Loading your subscriptions" />
+          ) : sorted.length === 0 ? (
             <EmptyState title="No subscriptions yet">
               Add streaming, software or any recurring bill to see your fixed costs.
             </EmptyState>

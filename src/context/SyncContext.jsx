@@ -9,6 +9,9 @@ import { createRemote } from '../sync/remote';
 import { TABLE_NAMES, TABLES } from '../sync/tables';
 
 const SyncContext = createContext(null);
+// The loading flag lives in its own context holding just a boolean. Screens that only need it re-render when
+// it flips, not on every background sync (which changes `status` twice a minute for everyone using useSync).
+const AccountLoadingContext = createContext(false);
 
 // Set just before leaving for Google so the app reopens Settings (where the sign-in result is shown).
 export const RETURN_TO_SETTINGS_KEY = 'pocket-book:return-to-settings';
@@ -24,6 +27,8 @@ async function waitUntil(test, timeoutMs = 2000) {
 const errorText = (e) =>
   (e && (e.message || e.error_description)) ? String(e.message || e.error_description) : 'Something went wrong';
 
+const FIRST_SYNC_WAIT_MS = 15000;
+
 export function SyncProvider({ children }) {
   const app = useApp();
   const { dismissAll } = useUndo(); // so wiping a device also closes any pending undo bars
@@ -31,6 +36,7 @@ export function SyncProvider({ children }) {
   const [authReady, setAuthReady] = useState(!syncEnabled);
   const [status, setStatus] = useState('idle'); // idle | syncing | offline | error
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
+  const [waitExpired, setWaitExpired] = useState(false); // stop showing placeholders if the first sync hangs
   const [error, setError] = useState(urlAuthError ? `Sign-in did not complete: ${urlAuthError}` : '');
   // Set when a sync was stopped because many records are missing from this device (see engine.js).
   const [attention, setAttention] = useState(null);
@@ -97,6 +103,28 @@ export function SyncProvider({ children }) {
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
+
+  const userId = user ? user.id : null;
+  // A different account (or signing out) starts from "never synced here": its first sync gets placeholders again
+  // and the old account's "last synced" time is not shown for the new one.
+  useEffect(() => {
+    setLastSyncedAt(null);
+  }, [userId]);
+
+  // True while a signed-in device waits for its FIRST sync, so empty lists can show placeholders instead of
+  // "nothing here yet". Every failure moves `status` away from idle/syncing, and a hung request gives up
+  // after FIRST_SYNC_WAIT_MS, so placeholders can never stay forever.
+  const waitingForFirstSync =
+    Boolean(user) && lastSyncedAt === null && (status === 'idle' || status === 'syncing');
+  useEffect(() => {
+    if (!waitingForFirstSync) {
+      setWaitExpired(false);
+      return undefined;
+    }
+    const id = setTimeout(() => setWaitExpired(true), FIRST_SYNC_WAIT_MS);
+    return () => clearTimeout(id);
+  }, [waitingForFirstSync]);
+  const loadingAccountData = waitingForFirstSync && !waitExpired;
 
   // ---------------------------------------------------------------- syncing
   const syncNow = useCallback(async () => {
@@ -173,8 +201,6 @@ export function SyncProvider({ children }) {
     },
     [syncNow]
   );
-
-  const userId = user ? user.id : null;
 
   // Sign-in (or page load while signed in): sync straight away.
   useEffect(() => {
@@ -279,6 +305,7 @@ export function SyncProvider({ children }) {
       signedIn: Boolean(user),
       status,
       lastSyncedAt,
+      loadingAccountData,
       error,
       attention,
       restoreFromAccount,
@@ -289,10 +316,14 @@ export function SyncProvider({ children }) {
       signOutAndWipe,
       syncNow,
     }),
-    [authReady, user, status, lastSyncedAt, error, attention, restoreFromAccount, deleteEverywhere, permitMassDelete, signIn, signOut, signOutAndWipe, syncNow]
+    [authReady, user, status, lastSyncedAt, loadingAccountData, error, attention, restoreFromAccount, deleteEverywhere, permitMassDelete, signIn, signOut, signOutAndWipe, syncNow]
   );
 
-  return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;
+  return (
+    <SyncContext.Provider value={value}>
+      <AccountLoadingContext.Provider value={loadingAccountData}>{children}</AccountLoadingContext.Provider>
+    </SyncContext.Provider>
+  );
 }
 
 export function useSync() {
@@ -300,3 +331,6 @@ export function useSync() {
   if (!ctx) throw new Error('useSync must be used inside <SyncProvider>');
   return ctx;
 }
+
+/** True while a signed-in device waits for its first sync. False outside a SyncProvider (local-only use). */
+export const useAccountLoading = () => useContext(AccountLoadingContext);

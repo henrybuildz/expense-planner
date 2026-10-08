@@ -7,6 +7,8 @@ import { formatDate } from '../../utils/dates';
 import { formatMoney, formatPercent } from '../../utils/format';
 import CategoryBadge from '../ui/CategoryBadge';
 import EmptyState from '../ui/EmptyState';
+import { SkeletonDashboard } from '../ui/Skeleton';
+import { useAccountLoading } from '../../context/SyncContext';
 import DonutChart from './DonutChart';
 import MonthlyBars from './MonthlyBars';
 import WeekSummary from './WeekSummary';
@@ -28,6 +30,7 @@ function Metric({ label, value, hint, tone }) {
 }
 
 export default function Dashboard({ onNavigate }) {
+  const loadingAccountData = useAccountLoading();
   const { transactions } = useApp();
   const today = useToday(); // re-aggregates when the month rolls over
   const stats = useMemo(() => summarize(transactions, today), [transactions, today]);
@@ -35,6 +38,8 @@ export default function Dashboard({ onNavigate }) {
     () => [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6),
     [transactions]
   );
+
+  if (transactions.length === 0 && loadingAccountData) return <SkeletonDashboard label="Loading your overview" />;
 
   if (transactions.length === 0) {
     return (

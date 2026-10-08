@@ -1,4 +1,5 @@
 import { useSync } from '../../context/SyncContext';
+import { SkeletonAccount } from '../ui/Skeleton';
 import Icon from '../ui/Icon';
 
 function statusLine({ status, lastSyncedAt, error }) {
@@ -25,7 +26,7 @@ export default function AccountSync() {
 
   // Not configured (no Supabase settings in this build): the app is local-only, as before.
   if (!enabled) return null;
-  if (!authReady) return null;
+  if (!authReady) return <SkeletonAccount />;
 
   if (!signedIn) {
     return (

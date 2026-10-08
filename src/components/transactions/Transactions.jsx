@@ -7,6 +7,8 @@ import { formatMoney } from '../../utils/format';
 import { sumMoney } from '../../utils/money';
 import CategoryBadge from '../ui/CategoryBadge';
 import EmptyState from '../ui/EmptyState';
+import { Skeleton, SkeletonRows } from '../ui/Skeleton';
+import { useAccountLoading } from '../../context/SyncContext';
 import Icon from '../ui/Icon';
 import TransactionForm from './TransactionForm';
 
@@ -14,6 +16,7 @@ import TransactionForm from './TransactionForm';
 const PAGE_SIZE = 100;
 
 export default function Transactions() {
+  const loadingAccountData = useAccountLoading();
   const { transactions, addTransaction, updateTransaction, deleteTransaction, restoreTransaction } = useApp();
   const { notify } = useUndo();
   const [editingId, setEditingId] = useState(null);
@@ -124,18 +127,26 @@ export default function Transactions() {
         </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-          <span>
-            {filtered.length} of {transactions.length} shown
-          </span>
-          <span className="tabular-nums">
-            <span className="text-emerald-600">+{formatMoney(totals.income)}</span>
-            {' · '}
-            <span className="text-rose-600">−{formatMoney(totals.expense)}</span>
-          </span>
+          {transactions.length === 0 && loadingAccountData ? (
+            <Skeleton className="h-3.5 w-40" /> // not "0 of 0 shown, +€0.00": those are not true yet
+          ) : (
+            <>
+              <span>
+                {filtered.length} of {transactions.length} shown
+              </span>
+              <span className="tabular-nums">
+                <span className="text-emerald-600">+{formatMoney(totals.income)}</span>
+                {' · '}
+                <span className="text-rose-600">−{formatMoney(totals.expense)}</span>
+              </span>
+            </>
+          )}
         </div>
 
         <div className="mt-3 max-h-[calc(100vh-18rem)] min-h-[16rem] overflow-y-auto pr-1">
-          {transactions.length === 0 ? (
+          {transactions.length === 0 && loadingAccountData ? (
+            <SkeletonRows label="Loading your transactions" />
+          ) : transactions.length === 0 ? (
             <EmptyState title="No transactions yet">
               Use the form to add your first income or expense.
             </EmptyState>

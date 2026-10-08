@@ -10,6 +10,8 @@ import { parseMoney, toCents } from '../../utils/money';
 import { spendingByCategory } from '../../utils/stats';
 import CategoryBadge from '../ui/CategoryBadge';
 import EmptyState from '../ui/EmptyState';
+import { SkeletonCards } from '../ui/Skeleton';
+import { useAccountLoading } from '../../context/SyncContext';
 import Field from '../ui/Field';
 import Icon from '../ui/Icon';
 import MoneyInput from '../ui/MoneyInput';
@@ -26,6 +28,7 @@ function tone(pct) {
 }
 
 export default function Budgets() {
+  const loadingAccountData = useAccountLoading();
   const { transactions, budgets, setBudget, removeBudget, restoreBudget } = useApp();
   const { notify } = useUndo();
   const [category, setCategory] = useState('');
@@ -143,7 +146,9 @@ export default function Budgets() {
           </div>
         )}
 
-        {rows.length === 0 ? (
+        {rows.length === 0 && loadingAccountData ? (
+          <SkeletonCards label="Loading your budgets" />
+        ) : rows.length === 0 ? (
           <div className="card">
             <EmptyState title="No budgets yet">
               Pick a category and a monthly limit to start tracking.

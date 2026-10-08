@@ -107,6 +107,15 @@ The screen is deliberately self-contained: it uses no app context. If a provider
 
 **Testing it:** to test crashes that repeat, bundle `ErrorBoundary` around a component that always throws (an isolated page) and drive it from the browser. Settings > Troubleshooting has two buttons that throw on purpose (`TestBomb`): "Preview: a section crashes" and "Preview: the whole app crashes". They touch no data. To test the watchdog, serve a copy of `dist/index.html` without the app script and wait 10 s.
 
+## Skeleton loaders
+
+All data is read from `localStorage` synchronously, so almost nothing in the app waits. Placeholders (`src/components/ui/Skeleton.jsx`, a calm opacity pulse that stops under `prefers-reduced-motion`) are used only where something genuinely arrives late:
+
+- **Account card in Settings** while the saved login is checked (`authReady` false): `SkeletonAccount` instead of rendering nothing, so the card does not pop in and shift the layout.
+- **First sync on a signed-in device**: `useAccountLoading()` (a boolean in its own context, so screens do not re-render on every background sync the way `useSync()` consumers do; `loadingAccountData` on `useSync()` is the same value) is true while `user` is set, nothing has synced yet (`lastSyncedAt === null`) and the status is idle/syncing. Dashboard, Transactions, Budgets and Subscriptions then show placeholders **in place of their "nothing here yet" message**, only when that list is empty (existing data is never hidden). The "N of M shown, +€ / −€" line and the Subscriptions summary cards also become placeholders then, so a not-yet-loaded account never shows false "€0.00" totals. `lastSyncedAt` resets when the account changes (sign-out, or a different person signing in on the same page), so the next account's first sync gets placeholders too. It turns off on success, on any failure (error, offline, paused by the safety brake) and after 15 s (`FIRST_SYNC_WAIT_MS`) if a request hangs, so placeholders can never stay forever.
+- Signed-out and local-only users never see placeholders. Do not add them to anything that reads local data: they would only flash.
+- Accessibility: each group is one `role="status" aria-busy="true"` region with a screen-reader label; the shapes are `aria-hidden`.
+
 ## Launch splash
 
 A green screen where the three logo bars pop up one after another, "Pocket Book" fades in, and the screen lifts away like a curtain (about 2.2 s). It is plain HTML + CSS inside `index.html` (so it paints instantly, before any JavaScript loads) plus a tiny controller, `public/splash.js` (external because the CSP only allows scripts from this site; it must also stay in the service worker's `SHELL` list so it works offline).
@@ -146,7 +155,7 @@ tests/
   dates / money / sanitize / backup / stats / rescue / storage .test.js   pure logic
   sync/engine.test.js   two or three devices syncing against the fake server
   sync/remote.test.js   remote.js against the REAL supabase-js client with a recording fetch (URLs, headers, bodies, paging)
-  components/           crash screen, undo bar, money input, AppContext actions, App smoke test
+  components/           crash screen, undo bar, money input, skeletons, AppContext actions, App smoke test
 ```
 
 - Supabase is disabled in tests (`VITE_SUPABASE_*` are empty in `vite.config.js`), so nothing touches the network.
@@ -178,7 +187,7 @@ src/
     settings/         Settings (opened from the Pocket Book title; hosts Account + Backup + About)
     account/          AccountSync (Google sign-in, sync status)
     backup/           DataBackup (export / import)
-    ui/               Icon, Field, CategoryBadge, EmptyState, TypeToggle, MoneyInput, UndoBar
+    ui/               Icon, Field, CategoryBadge, EmptyState, TypeToggle, MoneyInput, UndoBar, Skeleton
     system/           ErrorBoundary (crash screen), TestBomb (Settings > Troubleshooting)
     dashboard/        Dashboard, WeekSummary (Mon-Sun income/expenses), DonutChart (SVG), MonthlyBars (SVG)
     transactions/     Transactions (list, search, filters), TransactionForm
