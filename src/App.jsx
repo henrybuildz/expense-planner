@@ -18,6 +18,8 @@ import Budgets from './components/budgets/Budgets';
 import Subscriptions from './components/subscriptions/Subscriptions';
 import Calculator from './components/calculator/Calculator';
 import Settings from './components/settings/Settings';
+import ErrorBoundary from './components/system/ErrorBoundary';
+import TestBomb from './components/system/TestBomb';
 
 // Full-width page gutters: the app fills the whole window instead of sitting in a centred column.
 const GUTTER = 'w-full px-4 sm:px-6 lg:px-8';
@@ -43,6 +45,7 @@ function Shell() {
     }
   });
   const { signedIn, status } = useSync();
+  const [appBomb, setAppBomb] = useState(false); // Settings > Troubleshooting: preview the full-app crash screen
   const [storageBroken, setStorageBroken] = useState(hasStorageFailed);
 
   useEffect(() => {
@@ -177,17 +180,24 @@ function Shell() {
         </div>
       )}
 
+      {appBomb && <TestBomb />}
+
+      {/* A crash in one section must not take the header and tabs down with it; switching tab retries. */}
       {showSettings ? (
         <main id="panel" aria-labelledby="settings-title" className={`${GUTTER} py-6`}>
-          <Settings onClose={() => setShowSettings(false)} />
+          <ErrorBoundary variant="panel" resetKey="settings">
+            <Settings onClose={() => setShowSettings(false)} onTestAppCrash={() => setAppBomb(true)} />
+          </ErrorBoundary>
         </main>
       ) : (
         <main id="panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className={`${GUTTER} py-6`}>
-          {tab === 'dashboard' && <Dashboard onNavigate={goToTab} />}
-          {tab === 'transactions' && <Transactions />}
-          {tab === 'budgets' && <Budgets />}
-          {tab === 'subscriptions' && <Subscriptions />}
-          {tab === 'calculator' && <Calculator />}
+          <ErrorBoundary variant="panel" resetKey={tab}>
+            {tab === 'dashboard' && <Dashboard onNavigate={goToTab} />}
+            {tab === 'transactions' && <Transactions />}
+            {tab === 'budgets' && <Budgets />}
+            {tab === 'subscriptions' && <Subscriptions />}
+            {tab === 'calculator' && <Calculator />}
+          </ErrorBoundary>
         </main>
       )}
     </div>

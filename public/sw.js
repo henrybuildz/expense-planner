@@ -9,7 +9,7 @@
  *
  * Bump VERSION to force old caches to be dropped.
  */
-const VERSION = 'v7';
+const VERSION = 'v8';
 const CACHE = `expense-planner-${VERSION}`;
 // Parser-initiated <script>/<link> requests send different headers (Accept, CORS mode)
 // than the fetch() that stored them, so a server's `Vary` header would make every

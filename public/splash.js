@@ -8,12 +8,53 @@
  *    (slow connection), the curtain waits for it, for at most MAX_WAIT_MS.
  *  - The CSS animation hides the splash by itself and a timer removes it, so a failure here can never
  *    leave the app covered for long.
+ *  - Startup watchdog (runs on EVERY load, even when the splash is skipped): if the app has still not
+ *    appeared after STARTUP_MS (a script that failed to load or run, or a very slow connection) it shows a
+ *    plain "taking longer than expected" message with a Reload button instead of leaving a blank page.
+ *    The app, once it does load, simply replaces that message. In-app crashes are handled separately by the
+ *    app's own ErrorBoundary; this covers the case where the app never gets to start.
  */
 (function () {
   var root = document.documentElement;
   var KEY = 'pocket-book:splash-seen';
   var MAX_WAIT_MS = 8000; // hard limit: the splash is gone by then no matter what
+  var STARTUP_MS = 10000; // no app by then: say so
   var forced = /[?&]splash(=|&|$)/.test(window.location.search);
+
+  var showStartupProblem = function (app) {
+    var box = document.createElement('div');
+    box.setAttribute('role', 'alert');
+    box.style.cssText =
+      'max-width:28rem;margin:20vh auto 0;padding:1.5rem;text-align:center;color:#334155;' +
+      'font:16px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
+    var title = document.createElement('h1');
+    title.textContent = 'Pocket Book is taking longer than expected to start';
+    title.style.cssText = 'font-size:1.125rem;margin:0 0 .5rem;color:#1e293b';
+    var text = document.createElement('p');
+    text.textContent = 'Your data is safe in this browser. Check your connection, then reload.';
+    text.style.margin = '0 0 1rem';
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = 'Reload';
+    button.style.cssText =
+      'padding:.5rem 1rem;border:0;border-radius:.5rem;background:#059669;color:#fff;font:inherit;cursor:pointer';
+    button.addEventListener('click', function () {
+      window.location.reload();
+    });
+    box.appendChild(title);
+    box.appendChild(text);
+    box.appendChild(button);
+    app.appendChild(box);
+  };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var app = document.getElementById('root');
+    if (!app) return;
+    window.setTimeout(function () {
+      if (app.childNodes.length === 0) showStartupProblem(app);
+    }, STARTUP_MS);
+  });
+
   try {
     if (!forced && window.sessionStorage.getItem(KEY)) {
       root.classList.add('no-splash');

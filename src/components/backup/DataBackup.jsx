@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { KEYS } from '../../constants/storage';
 import { MAX_IMPORT_BYTES, buildBackup, parseBackup } from '../../utils/backup';
 import { todayISO } from '../../utils/dates';
+import { downloadJson } from '../../utils/rescue';
 import { useSync } from '../../context/SyncContext';
 import { useUndo } from '../../context/UndoContext';
 import Icon from '../ui/Icon';
@@ -28,15 +29,7 @@ export default function DataBackup() {
   const [message, setMessage] = useState(null); // { ok: boolean, text: string }
 
   const exportBackup = () => {
-    const json = JSON.stringify(buildBackup({ transactions, budgets, subscriptions }), null, 2);
-    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `pocket-book-backup-${todayISO()}.json`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    downloadJson(`pocket-book-backup-${todayISO()}.json`, buildBackup({ transactions, budgets, subscriptions }));
     setMessage({
       ok: true,
       text: `Exported ${countText({ transactions, budgets, subscriptions })}. Keep the file somewhere safe.`,

@@ -83,6 +83,27 @@ Deleting a transaction, budget or subscription happens immediately (no confirm p
 - Accessibility: the bars live in one `aria-live="polite"` region (no nested `role=status`, so they are announced once) and carry a screen-reader hint about Ctrl/Cmd+Z.
 - Works with sync: undoing after the delete has already reached the account re-adds the record, which the next sync pushes as a normal upsert (`deleted_at: null`), so it reappears on every device.
 
+## Crash screen
+
+If part of the app throws while rendering, a recovery screen replaces the blank page. Two React error boundaries (`src/components/system/ErrorBoundary.jsx`):
+
+- **Whole app** (`main.jsx`, `variant="page"`): full-screen "Something went wrong".
+- **One section** (`App.jsx`, `variant="panel"`, around the tab/Settings content): an inline "This part hit a problem" card; the header and tabs keep working. It retries automatically when you switch tab (`resetKey`).
+
+Both offer **Try again**, **Reload** and **Export my data**, plus collapsed technical details with **Copy details** (error, page and browser only: no financial data) and **Download raw storage** (every `expense-planner:*` key byte for byte, never the login token).
+
+The screen is deliberately self-contained: it uses no app context. If a provider is what crashed it must still render and still save the user's data, so `src/utils/rescue.js` reads localStorage directly (`buildRescueBackup` produces the normal importable backup format; unreadable records are skipped and the raw text is kept in a `:corrupt-backup` key; `buildRawDump`; `downloadJson`, which Settings > Export also uses).
+
+**Crash loop** (it crashes on every launch because of what is stored): under Technical details, **Start fresh** (`resetLocalData` in `rescue.js`, confirmed first) downloads a normal backup file, keeps a raw copy in `expense-planner:crash-backup`, then clears the data keys and the sync bookkeeping and reloads. The backup file can be imported again from Settings. Backups and the login session are left alone. If the same crash repeats within 3 s of "Try again" the screen says retrying will not help. Focus moves to the message when it appears; the section variant uses an `h2` (the app already has the page's `h1`).
+
+**Other tabs:** every tab shares localStorage. When one tab erases the sync bookkeeping, the others must forget their in-memory copy too (`SyncContext` listens for the `expense-planner:sync` key being removed). Otherwise a healthy tab sees the cleared data as "everything deleted" and pushes soft-deletes to the account (the mass-delete brake only catches 5 or more).
+
+**Not caught, by React's design:** errors inside event handlers, timers and promises. The screen only covers rendering crashes.
+
+**App never starts** (script failed to load or run, very slow connection): the startup watchdog in `public/splash.js` runs on every load; if `#root` is still empty after 10 s it shows a plain "taking longer than expected, Reload" message. The app replaces it if it does arrive later (React clears the container).
+
+**Testing it:** to test crashes that repeat, bundle `ErrorBoundary` around a component that always throws (an isolated page) and drive it from the browser. Settings > Troubleshooting has two buttons that throw on purpose (`TestBomb`): "Preview: a section crashes" and "Preview: the whole app crashes". They touch no data. To test the watchdog, serve a copy of `dist/index.html` without the app script and wait 10 s.
+
 ## Launch splash
 
 A green screen where the three logo bars pop up one after another, "Pocket Book" fades in, and the screen lifts away like a curtain (about 2.2 s). It is plain HTML + CSS inside `index.html` (so it paints instantly, before any JavaScript loads) plus a tiny controller, `public/splash.js` (external because the CSP only allows scripts from this site; it must also stay in the service worker's `SHELL` list so it works offline).
@@ -134,6 +155,7 @@ src/
     account/          AccountSync (Google sign-in, sync status)
     backup/           DataBackup (export / import)
     ui/               Icon, Field, CategoryBadge, EmptyState, TypeToggle, MoneyInput, UndoBar
+    system/           ErrorBoundary (crash screen), TestBomb (Settings > Troubleshooting)
     dashboard/        Dashboard, WeekSummary (Mon-Sun income/expenses), DonutChart (SVG), MonthlyBars (SVG)
     transactions/     Transactions (list, search, filters), TransactionForm
     budgets/          Budgets (progress cards, 80% / 100% alerts)

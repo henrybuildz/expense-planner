@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { KEYS } from '../constants/storage';
 import { useApp } from './AppContext';
 import { useUndo } from './UndoContext';
 import { supabase, syncEnabled, urlAuthError } from '../lib/supabase';
@@ -46,6 +47,7 @@ export function SyncProvider({ children }) {
   const timer = useRef(null);
   const wiping = useRef(false);
   const permitDeletes = useRef(false); // true right after a deliberate bulk delete
+  const pendingMetaReset = useRef(false); // another tab erased the sync bookkeeping while we were syncing
 
   const getRecords = useCallback((name) => latest.current[name], []);
   const store = useMemo(
@@ -78,6 +80,22 @@ export function SyncProvider({ children }) {
       alive = false;
       data.subscription.unsubscribe();
     };
+  }, []);
+
+  // Another tab erased the sync bookkeeping (the crash screen's "Start fresh" is the only thing that does).
+  // Our own in-memory copy still says "these records were synced", so the cleared data would look like a mass
+  // deletion and be pushed to the account. Forget it too, so the next sync simply merges the account back in.
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key !== KEYS.sync || e.newValue !== null) return;
+      if (running.current) {
+        pendingMetaReset.current = true; // do not pull the rug from under a sync that is mid-flight
+        return;
+      }
+      metaRef.current.reset(userRef.current ? userRef.current.id : null);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   // ---------------------------------------------------------------- syncing
@@ -133,6 +151,11 @@ export function SyncProvider({ children }) {
       }
     } finally {
       running.current = false;
+      if (pendingMetaReset.current) {
+        pendingMetaReset.current = false;
+        metaRef.current.reset(userRef.current ? userRef.current.id : null);
+        again.current = true;
+      }
       if (again.current) {
         again.current = false;
         clearTimeout(timer.current);
