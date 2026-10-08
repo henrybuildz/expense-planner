@@ -1,7 +1,7 @@
 {
-  "name": "Expense Planner",
-  "short_name": "Expenses",
-  "description": "Offline-first personal expense planner: transactions, budgets, subscriptions and a projection calculator.",
+  "name": "Pocket Book",
+  "short_name": "Pocket Book",
+  "description": "Offline-first personal finance: transactions, budgets, subscriptions and a projection calculator.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

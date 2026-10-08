@@ -86,7 +86,7 @@ export default function Subscriptions() {
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[340px_1fr] 2xl:grid-cols-[400px_1fr]">
         <div className="lg:sticky lg:top-24 lg:self-start">
           <SubscriptionForm
             editing={editing}

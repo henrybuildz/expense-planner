@@ -110,7 +110,7 @@ export default function Calculator() {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
+    <div className="grid gap-6 lg:grid-cols-[380px_1fr] 2xl:grid-cols-[440px_1fr]">
       <section className="card space-y-4 lg:self-start" aria-label="Calculator inputs">
         <h2 className="text-sm font-semibold text-slate-700">Income / expense projector</h2>
 

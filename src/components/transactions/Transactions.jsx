@@ -68,7 +68,7 @@ export default function Transactions() {
   const filtersActive = query || category || type;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
+    <div className="grid gap-6 lg:grid-cols-[340px_1fr] 2xl:grid-cols-[400px_1fr]">
       <div className="lg:sticky lg:top-24 lg:self-start">
         <TransactionForm
           editing={editing}
@@ -128,7 +128,7 @@ export default function Transactions() {
           </span>
         </div>
 
-        <div className="mt-3 max-h-[65vh] overflow-y-auto pr-1">
+        <div className="mt-3 max-h-[calc(100vh-18rem)] min-h-[16rem] overflow-y-auto pr-1">
           {transactions.length === 0 ? (
             <EmptyState title="No transactions yet">
               Use the form to add your first income or expense.

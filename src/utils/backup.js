@@ -42,7 +42,7 @@ export function parseBackup(text) {
     return { error: 'That file is not valid JSON.' };
   }
   if (!isObject(raw) || raw.app !== BACKUP_APP) {
-    return { error: 'This is not an Expense Planner backup file.' };
+    return { error: 'This is not a Pocket Book backup file.' };
   }
   if (!Number.isInteger(raw.version) || raw.version < 1 || raw.version > BACKUP_VERSION) {
     return { error: 'This backup was made by a newer version of the app and cannot be read.' };

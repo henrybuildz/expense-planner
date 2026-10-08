@@ -2,6 +2,15 @@
 const UPSERT_CHUNK = 500;
 const DELETE_CHUNK = 50; // ids travel in the URL for .in(); keep the URL short
 const PAGE = 1000; // Supabase returns at most 1000 rows per request by default
+// A row's updated_at is the moment its transaction STARTED, not when it committed. A slow write from
+// another device can therefore appear with a timestamp slightly older than our cursor. Re-reading a
+// short window before the cursor catches those; re-applying a row we already have changes nothing.
+const CURSOR_MARGIN_MS = 10_000;
+
+const rewind = (cursor) => {
+  const t = Date.parse(cursor);
+  return Number.isNaN(t) ? cursor : new Date(t - CURSOR_MARGIN_MS).toISOString();
+};
 
 const chunks = (list, size) => {
   const out = [];
@@ -31,14 +40,13 @@ export function createRemote(client) {
       }
     },
 
-    // Every row (including soft-deleted ones) changed at or after `cursor`, oldest first.
-    // `>=` plus a stable order means rows sharing one timestamp can never be skipped;
-    // re-reading the boundary row is harmless because applying a row is idempotent.
+    // Every row (including soft-deleted ones) changed since shortly before `cursor`, oldest first.
+    // `>=` plus a stable order means rows sharing one timestamp can never be skipped.
     async changedSince(table, cursor) {
       const rows = [];
       for (let from = 0; ; from += PAGE) {
         let query = client.from(table.remote).select('*');
-        if (cursor) query = query.gte('updated_at', cursor);
+        if (cursor) query = query.gte('updated_at', rewind(cursor));
         const { data, error } = await query
           .order('updated_at', { ascending: true })
           .order(table.key, { ascending: true })

@@ -74,7 +74,7 @@ export default function Budgets() {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
+    <div className="grid gap-6 lg:grid-cols-[340px_1fr] 2xl:grid-cols-[400px_1fr]">
       <form onSubmit={submit} className="card space-y-4 lg:sticky lg:top-24 lg:self-start" noValidate>
         <h2 className="text-sm font-semibold text-slate-700">Set monthly budget</h2>
         <Field label="Category" htmlFor="b-category" error={errors.category}>
@@ -148,7 +148,7 @@ export default function Budgets() {
             </EmptyState>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {rows.map((r) => {
               const t = tone(r.pct);
               return (

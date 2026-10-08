@@ -1,4 +1,4 @@
-/* Expense Planner service worker (hand-written, no build step).
+/* Pocket Book service worker (hand-written, no build step).
  *
  * - Precaches the static app shell on install.
  * - Navigations: network-first, falling back to the cached index.html offline.
@@ -9,7 +9,7 @@
  *
  * Bump VERSION to force old caches to be dropped.
  */
-const VERSION = 'v4';
+const VERSION = 'v5';
 const CACHE = `expense-planner-${VERSION}`;
 // Parser-initiated <script>/<link> requests send different headers (Accept, CORS mode)
 // than the fetch() that stored them, so a server's `Vary` header would make every

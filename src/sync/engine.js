@@ -29,6 +29,22 @@ export function diffTable(table, snapshot, records) {
   return { upserts, deletes };
 }
 
+// Safety brake. Local data that vanishes (corrupt storage, a bug, evicted storage) looks exactly like
+// "the user deleted everything", and syncing it would delete the whole account on every device.
+// So a sync that would delete many records at once stops and asks, unless the user just did a
+// deliberate bulk action (Delete all data, Replace import).
+export const MASS_DELETE_MIN = 5;
+export const isMassDelete = (deleteCount, snapshotSize) =>
+  deleteCount >= MASS_DELETE_MIN && deleteCount >= snapshotSize / 2;
+
+export class MassDeleteError extends Error {
+  constructor(tables) {
+    super('Many records are missing from this device');
+    this.name = 'MassDeleteError';
+    this.tables = tables; // { [tableName]: { deletes, total } }
+  }
+}
+
 export const hasPendingChanges = (meta, getRecords) =>
   TABLE_NAMES.some((name) => {
     const table = TABLES[name];
@@ -61,8 +77,21 @@ export function applyRows(table, records, rows) {
  *   store  : { get(name) -> current state, update(name, fn) -> queue a functional state update }
  *   meta   : { snapshot, cursors, save() }
  */
-export async function runSync({ remote, userId, store, meta }) {
+export async function runSync({ remote, userId, store, meta, allowMassDelete = false }) {
   const report = { pushed: 0, deleted: 0, pulled: 0, skipped: 0 };
+
+  // Check every table BEFORE pushing anything, so a blocked sync changes nothing on the server.
+  if (!allowMassDelete) {
+    const suspicious = {};
+    for (const name of TABLE_NAMES) {
+      const table = TABLES[name];
+      const snapshot = meta.snapshot[name] || bag();
+      const { deletes } = diffTable(table, snapshot, table.toList(store.get(name)));
+      const total = Object.keys(snapshot).length;
+      if (isMassDelete(deletes.length, total)) suspicious[name] = { deletes: deletes.length, total };
+    }
+    if (Object.keys(suspicious).length) throw new MassDeleteError(suspicious);
+  }
 
   for (const name of TABLE_NAMES) {
     const table = TABLES[name];

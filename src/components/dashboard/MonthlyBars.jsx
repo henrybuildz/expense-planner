@@ -16,7 +16,7 @@ export default function MonthlyBars({ months }) {
     <div>
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="h-auto w-full"
+        className="mx-auto h-auto max-h-80 w-full"
         role="img"
         aria-label="Income and expenses for the last six months"
       >

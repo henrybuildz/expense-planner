@@ -20,7 +20,7 @@ const countText = (data) =>
 export default function DataBackup() {
   const { transactions, budgets, subscriptions, replaceAll, mergeAll, clearAll } = useApp();
   const isEmpty = !transactions.length && !Object.keys(budgets).length && !subscriptions.length;
-  const { signedIn } = useSync();
+  const { signedIn, permitMassDelete } = useSync();
   const fileInput = useRef(null);
   const [pending, setPending] = useState(null); // a validated file waiting for the user's choice
   const [message, setMessage] = useState(null); // { ok: boolean, text: string }
@@ -30,7 +30,7 @@ export default function DataBackup() {
     const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = `expense-planner-backup-${todayISO()}.json`;
+    link.download = `pocket-book-backup-${todayISO()}.json`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -47,7 +47,7 @@ export default function DataBackup() {
     if (!file) return;
     setPending(null);
     if (file.size > MAX_IMPORT_BYTES) {
-      setMessage({ ok: false, text: 'That file is too large to be an Expense Planner backup.' });
+      setMessage({ ok: false, text: 'That file is too large to be a Pocket Book backup.' });
       return;
     }
     let text;
@@ -83,6 +83,7 @@ export default function DataBackup() {
     const synced = signedIn ? ' Because you are signed in, this ALSO deletes your synced copy on all your devices.' : '';
     if (!window.confirm(`Delete ALL your data (${what})?${synced} This cannot be undone. Export first if you want a copy.`)) return;
     saveSafetyCopy();
+    permitMassDelete(); // deliberate: tell the sync safety brake this big delete is intended
     clearAll();
     setPending(null);
     setMessage({ ok: true, text: 'All data deleted.' });
@@ -91,6 +92,7 @@ export default function DataBackup() {
   const apply = (mode) => {
     if (mode === 'replace') {
       saveSafetyCopy();
+      permitMassDelete(); // a Replace can legitimately remove many records
       replaceAll(pending.data);
     } else {
       mergeAll(pending.data);
