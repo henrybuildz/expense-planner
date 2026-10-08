@@ -106,14 +106,14 @@ The screen is deliberately self-contained: it uses no app context. If a provider
 
 **App never starts** (script failed to load or run, very slow connection): the startup watchdog in `public/splash.js` runs on every load; if `#root` is still empty after 10 s it shows a plain "taking longer than expected, Reload" message. The app replaces it if it does arrive later (React clears the container).
 
-**Testing it:** to test crashes that repeat, bundle `ErrorBoundary` around a component that always throws (an isolated page) and drive it from the browser. Settings > Troubleshooting has two buttons that throw on purpose (`TestBomb`): "Preview: a section crashes" and "Preview: the whole app crashes". They touch no data. To test the watchdog, serve a copy of `dist/index.html` without the app script and wait 10 s.
+**Testing it:** to test crashes that repeat, bundle `ErrorBoundary` around a component that always throws (an isolated page) and drive it from the browser. There are no in-app crash-preview buttons any more (the Troubleshooting section was removed from Settings). To test the watchdog, serve a copy of `dist/index.html` without the app script and wait 10 s.
 
 ## Data protection (browser storage, backup reminder, keep-alive)
 
 Data kept only in the browser can be lost: clearing site data, a full disk (browsers may evict "best-effort" storage), Safari clearing a site's data after about a week without a visit, a different browser or device. Three layers reduce that; none replaces the others.
 
-- **Persistent storage** (`src/utils/persist.js`, `src/hooks/useRequestPersistence.js`): once there is data, the app calls `navigator.storage.persist()` once per page load. The browser decides (Chrome by engagement, installed apps usually yes, Firefox may ask the user, Safari may decline), so the answer is never assumed: Settings > **Data protection** shows the real state and a button that explains when the browser says no.
-- **Backup reminder** (`src/utils/backupStatus.js`, `BackupNudge`, `DataProtection`): every export (Settings, the Dashboard card) records the date in `expense-planner:backup-status`. Someone who is **not signed in** and has data gets an amber card on the Dashboard once the last backup (or, if never backed up, the first time data was seen: `since`) is 7 days old. "Remind me in 7 days" snoozes it. No nagging on first sight of data, with no data, or when signed in (the account is the backup). `since` and the snooze reset when all data is deleted. Dates only; the status is never part of exports or sync.
+- **Persistent storage** (`src/utils/persist.js`, `src/hooks/useRequestPersistence.js`): once there is data, the app calls `navigator.storage.persist()` once per page load. The browser decides (Chrome by engagement, installed apps usually yes, Firefox may ask the user, Safari may decline), and the app does not show the answer anywhere (the Settings > Data protection card was removed).
+- **Backup reminder** (`src/utils/backupStatus.js`, `BackupNudge`): every export (Settings, the Dashboard card) records the date in `expense-planner:backup-status`. Someone who is **not signed in** and has data gets an amber card on the Dashboard once the last backup (or, if never backed up, the first time data was seen: `since`) is 7 days old. "Remind me in 7 days" snoozes it. No nagging on first sight of data, with no data, or when signed in (the account is the backup). `since` and the snooze reset when all data is deleted. Dates only; the status is never part of exports or sync.
 - **Supabase keep-alive** (`.github/workflows/keepalive.yml`, `scripts/keepalive.sh`): free-plan projects pause after about a week of inactivity, which would silently switch sync off. A workflow runs Monday and Thursday and sends one read request with the public key. The anonymous read is refused by the row-level-security lockdown (HTTP 401, Postgres error `42501`), which proves the database answered; the script treats that, or a 200, as success and fails (red run, GitHub email) on anything else: paused or deleted project, wrong URL or key, no answer. It refuses any URL that is not exactly `https://<project>.supabase.co` (one lowercase label, optional trailing slash; checked with a strict regex, because a shell glob like `https://*.supabase.co` would also accept `https://evil.com/x.supabase.co`), so the key cannot be sent elsewhere. It reads the same repository variables as the deploy (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`). Limitation: GitHub switches scheduled workflows off after 60 days without repository activity (a commit is enough); re-enable it under the Actions tab. Whether Supabase counts this request as "activity" is not documented precisely; if the project ever pauses anyway, add a tiny `ping()` SQL function executable by anon and call it instead.
 
 ## Skeleton loaders
@@ -194,11 +194,11 @@ src/
   constants/          categories, periods (conversion factors), tabs, storage keys
   utils/              dates, format, sanitize, stats (dashboard aggregates)
   components/
-    settings/         Settings (opened from the Pocket Book title; hosts Data protection + Account + Backup + About), DataProtection
+    settings/         Settings (opened from the Pocket Book title; hosts only the Sync card and the Backup card: export / import / delete all)
     account/          AccountSync (Google sign-in, sync status)
     backup/           DataBackup (export / import), BackupNudge (Dashboard reminder)
     ui/               Icon, Field, CategoryBadge, EmptyState, TypeToggle, MoneyInput, DateInput, UndoBar, Skeleton
-    system/           ErrorBoundary (crash screen), TestBomb (Settings > Troubleshooting)
+    system/           ErrorBoundary (crash screen)
     dashboard/        Dashboard, WeekSummary (Mon-Sun income/expenses), DonutChart (SVG), MonthlyBars (SVG)
     transactions/     Transactions (list, search, filters), TransactionForm
     budgets/          Budgets (progress cards, 80% / 100% alerts)

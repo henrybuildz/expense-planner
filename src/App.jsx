@@ -17,7 +17,6 @@ import Subscriptions from './components/subscriptions/Subscriptions';
 import Calculator from './components/calculator/Calculator';
 import Settings from './components/settings/Settings';
 import ErrorBoundary from './components/system/ErrorBoundary';
-import TestBomb from './components/system/TestBomb';
 
 // Full-width page gutters: the app fills the whole window instead of sitting in a centred column.
 const GUTTER = 'w-full px-4 sm:px-6 lg:px-8';
@@ -59,7 +58,6 @@ function Shell() {
     const name = showSettings ? 'Settings' : TABS.find((t) => t.id === tab)?.label;
     document.title = name ? `${name} · Pocket Book` : 'Pocket Book';
   }, [tab, showSettings]);
-  const [appBomb, setAppBomb] = useState(false); // Settings > Troubleshooting: preview the full-app crash screen
   const [storageBroken, setStorageBroken] = useState(hasStorageFailed);
 
   useEffect(() => {
@@ -205,13 +203,11 @@ function Shell() {
         </div>
       )}
 
-      {appBomb && <TestBomb />}
-
       {/* A crash in one section must not take the header and tabs down with it; switching tab retries. */}
       {showSettings ? (
         <main id="panel" tabIndex={-1} aria-labelledby="settings-title" className={`${GUTTER} py-6 focus:outline-none`}>
           <ErrorBoundary variant="panel" resetKey="settings">
-            <Settings onClose={() => setShowSettings(false)} onTestAppCrash={() => setAppBomb(true)} />
+            <Settings onClose={() => setShowSettings(false)} />
           </ErrorBoundary>
         </main>
       ) : (

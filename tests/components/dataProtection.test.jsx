@@ -133,56 +133,8 @@ describe('asking the browser to protect the data on launch', () => {
   });
 });
 
-describe('Settings > Data protection', () => {
+describe('Settings > Backup', () => {
   const openSettings = () => userEvent.click(screen.getByRole('button', { name: /open settings/i }));
-
-  it('shows protected storage, the last backup and the account state', async () => {
-    setStorage({ persisted: async () => true, persist: vi.fn() });
-    seedData();
-    seedStatus({ lastBackup: todayISO(), since: '2020-01-01', snoozeUntil: null });
-    render(<App />);
-    await openSettings();
-    expect(await screen.findByText(/^Protected\./)).toBeInTheDocument();
-    expect(screen.getByText('Today')).toBeInTheDocument();
-    expect(screen.getByText(/not available in this version/i)).toBeInTheDocument(); // sync is off in tests
-  });
-
-  it('offers a button when not protected, and shows the browser\'s answer', async () => {
-    const persist = vi.fn(async () => true);
-    let granted = false;
-    setStorage({ persisted: async () => granted, persist: async () => { granted = true; return persist(); } });
-    render(<App />);
-    await openSettings();
-    const button = await screen.findByRole('button', { name: /ask the browser to protect it/i });
-    await userEvent.click(button);
-    expect(await screen.findByText(/^Protected\./)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /ask the browser to protect it/i })).not.toBeInTheDocument();
-  });
-
-  it('explains when the browser declines, and when it is unsupported', async () => {
-    setStorage({ persisted: async () => false, persist: async () => false });
-    const a = render(<App />);
-    await openSettings();
-    await userEvent.click(await screen.findByRole('button', { name: /ask the browser to protect it/i }));
-    expect(await screen.findByText(/^Not protected\./)).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent(/the browser said no/i); // a click must never look like nothing happened
-    a.unmount();
-    setStorage(undefined);
-    render(<App />);
-    await openSettings();
-    expect(await screen.findByText(/cannot be asked to protect/i)).toBeInTheDocument();
-  });
-
-  it('"Export now" downloads a backup and updates "Last backup"', async () => {
-    setStorage(undefined);
-    seedData();
-    render(<App />);
-    await openSettings();
-    expect(screen.getByText('Never')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Export now' }));
-    expect(downloads).toEqual([`pocket-book-backup-${todayISO()}.json`]);
-    expect(await screen.findByText('Today')).toBeInTheDocument();
-  });
 
   it('the normal Export data button also counts as a backup', async () => {
     setStorage(undefined);
