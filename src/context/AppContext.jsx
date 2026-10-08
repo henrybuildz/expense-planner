@@ -1,9 +1,11 @@
-import { createContext, useCallback, useContext, useMemo } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
 import { KEYS } from '../constants/storage';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { addCycle, todayISO } from '../utils/dates';
+import { EMPTY_BACKUP_STATUS, snoozeDate } from '../utils/backupStatus';
 import { uid } from '../utils/format';
 import {
+  sanitizeBackupStatus,
   sanitizeBudgets,
   sanitizeSubscriptions,
   sanitizeTransactions,
@@ -27,6 +29,24 @@ export function AppProvider({ children }) {
     KEYS.subscriptions,
     EMPTY_LIST,
     sanitizeSubscriptions
+  );
+
+  // Backup bookkeeping (dates only). `since` = when we first saw data, the starting point for the first reminder.
+  const [backupStatus, setBackupStatus] = useLocalStorage(KEYS.backupStatus, EMPTY_BACKUP_STATUS, sanitizeBackupStatus);
+  const hasData = transactions.length > 0 || Object.keys(budgets).length > 0 || subscriptions.length > 0;
+  useEffect(() => {
+    if (hasData && !backupStatus.since) setBackupStatus((s) => ({ ...s, since: todayISO() }));
+    if (!hasData && (backupStatus.since || backupStatus.snoozeUntil)) {
+      setBackupStatus((s) => ({ ...s, since: null, snoozeUntil: null })); // everything was deleted: start over
+    }
+  }, [hasData, backupStatus.since, backupStatus.snoozeUntil, setBackupStatus]);
+  const markBackedUp = useCallback(
+    () => setBackupStatus((s) => ({ ...s, lastBackup: todayISO(), snoozeUntil: null })),
+    [setBackupStatus]
+  );
+  const snoozeBackupNudge = useCallback(
+    () => setBackupStatus((s) => ({ ...s, snoozeUntil: snoozeDate(todayISO()) })),
+    [setBackupStatus]
   );
 
   const addTransaction = useCallback(
@@ -180,6 +200,10 @@ export function AppProvider({ children }) {
       transactions,
       budgets,
       subscriptions,
+      hasData,
+      backupStatus,
+      markBackedUp,
+      snoozeBackupNudge,
       replaceAll,
       mergeAll,
       clearAll,
@@ -202,6 +226,10 @@ export function AppProvider({ children }) {
       transactions,
       budgets,
       subscriptions,
+      hasData,
+      backupStatus,
+      markBackedUp,
+      snoozeBackupNudge,
       updateTable,
       replaceAll,
       mergeAll,

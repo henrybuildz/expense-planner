@@ -2,8 +2,7 @@ import { useRef, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { KEYS } from '../../constants/storage';
 import { MAX_IMPORT_BYTES, buildBackup, parseBackup } from '../../utils/backup';
-import { todayISO } from '../../utils/dates';
-import { downloadJson } from '../../utils/rescue';
+import { exportBackupFile } from '../../utils/exportBackup';
 import { useSync } from '../../context/SyncContext';
 import { useUndo } from '../../context/UndoContext';
 import Icon from '../ui/Icon';
@@ -20,7 +19,7 @@ const countText = (data) =>
     .join(', ');
 
 export default function DataBackup() {
-  const { transactions, budgets, subscriptions, replaceAll, mergeAll, clearAll, undoReplace } = useApp();
+  const { transactions, budgets, subscriptions, replaceAll, mergeAll, clearAll, undoReplace, markBackedUp } = useApp();
   const isEmpty = !transactions.length && !Object.keys(budgets).length && !subscriptions.length;
   const { signedIn, permitMassDelete } = useSync();
   const { notify } = useUndo();
@@ -29,7 +28,8 @@ export default function DataBackup() {
   const [message, setMessage] = useState(null); // { ok: boolean, text: string }
 
   const exportBackup = () => {
-    downloadJson(`pocket-book-backup-${todayISO()}.json`, buildBackup({ transactions, budgets, subscriptions }));
+    exportBackupFile({ transactions, budgets, subscriptions });
+    markBackedUp();
     setMessage({
       ok: true,
       text: `Exported ${countText({ transactions, budgets, subscriptions })}. Keep the file somewhere safe.`,

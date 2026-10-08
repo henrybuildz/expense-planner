@@ -12,6 +12,7 @@ let loading = false;
 vi.mock('../../src/context/SyncContext', async (orig) => ({
   ...(await orig()),
   useAccountLoading: () => loading,
+  useSync: () => ({ signedIn: false }), // the Dashboard's backup reminder asks whether you are signed in
 }));
 
 const tx = { id: 'a', type: 'expense', amount: 5, category: 'Food', date: '2026-10-08', notes: 'lunch' };

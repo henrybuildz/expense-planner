@@ -1,0 +1,34 @@
+name: Keep Supabase awake
+
+# A free Supabase project is paused after about a week without activity, which would silently switch sync off.
+# This sends one harmless read request every Monday and Thursday. If it ever fails (paused, deleted, wrong
+# variables) the run turns red and GitHub emails you.
+#
+# Note: GitHub switches scheduled workflows off after 60 days without any repository activity (a commit is
+# enough). If that happens, re-enable it under the Actions tab.
+
+on:
+  schedule:
+    - cron: '23 6 * * 1,4'
+  workflow_dispatch:
+
+# Read-only access to this repository, enough to fetch the script (also works if the repo is made private).
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # No third-party actions: the script ships inside the repository, so it is fetched with git itself.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          sparse-checkout: scripts/keepalive.sh
+          persist-credentials: false
+      - name: Query the database
+        env:
+          # Public values, the same repository variables the deploy uses.
+          SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: bash scripts/keepalive.sh

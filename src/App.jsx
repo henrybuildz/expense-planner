@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { AppProvider } from './context/AppContext';
+import { AppProvider, useApp } from './context/AppContext';
 import { SyncProvider } from './context/SyncContext';
 import { UndoProvider } from './context/UndoContext';
 import { TABS } from './constants/tabs';
 import { KEYS } from './constants/storage';
 import { STORAGE_ERROR_EVENT, hasStorageFailed } from './hooks/useLocalStorage';
+import { useRequestPersistence } from './hooks/useRequestPersistence';
 import { useSessionState } from './hooks/useSessionState';
 import { sanitizeTab } from './utils/sanitize';
 import { RETURN_TO_SETTINGS_KEY, useSync } from './context/SyncContext';
@@ -31,6 +32,8 @@ const DOT_LABEL = {
 };
 
 function Shell() {
+  const { hasData } = useApp();
+  useRequestPersistence(hasData); // ask the browser to keep the data once there is something worth keeping
   // Remembered for this window only: a refresh keeps the tab, closing and reopening the app starts at the dashboard.
   const [tab, setTab] = useSessionState(KEYS.tab, 'dashboard', sanitizeTab);
   // Earlier versions kept the tab in localStorage forever; drop that leftover so nothing stale lingers.

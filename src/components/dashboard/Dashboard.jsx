@@ -7,6 +7,7 @@ import { formatDate } from '../../utils/dates';
 import { formatMoney, formatPercent } from '../../utils/format';
 import CategoryBadge from '../ui/CategoryBadge';
 import EmptyState from '../ui/EmptyState';
+import BackupNudge from '../backup/BackupNudge';
 import { SkeletonDashboard } from '../ui/Skeleton';
 import { useAccountLoading } from '../../context/SyncContext';
 import DonutChart from './DonutChart';
@@ -43,6 +44,8 @@ export default function Dashboard({ onNavigate }) {
 
   if (transactions.length === 0) {
     return (
+      <div className="space-y-6">
+      <BackupNudge />
       <div className="card">
         <EmptyState title="Welcome! Nothing here yet.">
           <p>Add your first transaction to see your financial overview.</p>
@@ -53,6 +56,7 @@ export default function Dashboard({ onNavigate }) {
           </div>
         </EmptyState>
       </div>
+      </div>
     );
   }
 
@@ -60,6 +64,7 @@ export default function Dashboard({ onNavigate }) {
 
   return (
     <div className="space-y-6">
+      <BackupNudge />
       <section aria-label="Summary" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Metric
           label="Total Balance"

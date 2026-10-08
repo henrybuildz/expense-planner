@@ -84,4 +84,11 @@ export function sanitizeSubscriptions(raw) {
   );
 }
 
+const isoOrNull = (v) => (isValidISO(v) ? v : null);
+// { lastBackup, since, snoozeUntil }: each a 'YYYY-MM-DD' date or null. Anything else becomes null.
+export function sanitizeBackupStatus(raw) {
+  if (!isObject(raw)) return undefined;
+  return { lastBackup: isoOrNull(raw.lastBackup), since: isoOrNull(raw.since), snoozeUntil: isoOrNull(raw.snoozeUntil) };
+}
+
 export const sanitizeTab = (raw) => (isTabId(raw) ? raw : undefined);
