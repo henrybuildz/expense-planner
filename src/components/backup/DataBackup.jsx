@@ -130,7 +130,7 @@ export default function DataBackup() {
           <h2 id="backup-title" className="text-sm font-semibold text-slate-700">
             Backup
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="mt-1 text-sm text-slate-600">
             Your data is stored only in this browser. Export a file to keep it safe or move it to
             another computer.
           </p>

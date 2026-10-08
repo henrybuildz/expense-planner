@@ -135,7 +135,7 @@ export default function Transactions() {
                 {filtered.length} of {transactions.length} shown
               </span>
               <span className="tabular-nums">
-                <span className="text-emerald-600">+{formatMoney(totals.income)}</span>
+                <span className="text-emerald-700">+{formatMoney(totals.income)}</span>
                 {' · '}
                 <span className="text-rose-600">−{formatMoney(totals.expense)}</span>
               </span>
@@ -143,7 +143,7 @@ export default function Transactions() {
           )}
         </div>
 
-        <div className="mt-3 max-h-[calc(100vh-18rem)] min-h-[16rem] overflow-y-auto pr-1">
+        <div className="mt-3">
           {transactions.length === 0 && loadingAccountData ? (
             <SkeletonRows label="Loading your transactions" />
           ) : transactions.length === 0 ? (
@@ -186,11 +186,15 @@ export default function Transactions() {
                       <CategoryBadge name={t.category} />
                       <span className="text-xs text-slate-500">{formatDate(t.date)}</span>
                     </div>
-                    {t.notes && <p className="mt-1 truncate text-sm text-slate-600">{t.notes}</p>}
+                    {t.notes && (
+                      <p className="mt-1 truncate text-sm text-slate-600" title={t.notes}>
+                        {t.notes}
+                      </p>
+                    )}
                   </div>
                   <span
                     className={`shrink-0 text-sm font-semibold tabular-nums ${
-                      t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
+                      t.type === 'income' ? 'text-emerald-700' : 'text-rose-600'
                     }`}
                   >
                     {t.type === 'income' ? '+' : '−'}
@@ -201,7 +205,7 @@ export default function Transactions() {
                       type="button"
                       className="btn-icon"
                       onClick={() => setEditingId(t.id)}
-                      aria-label={`Edit ${t.category} transaction`}
+                      aria-label={`Edit ${t.category} transaction, ${formatMoney(t.amount)}, ${formatDate(t.date)}`}
                     >
                       <Icon name="pencil" className="h-4 w-4" />
                     </button>
@@ -209,7 +213,7 @@ export default function Transactions() {
                       type="button"
                       className="btn-icon hover:!text-rose-600"
                       onClick={() => handleDelete(t)}
-                      aria-label={`Delete ${t.category} transaction`}
+                      aria-label={`Delete ${t.category} transaction, ${formatMoney(t.amount)}, ${formatDate(t.date)}`}
                     >
                       <Icon name="trash" className="h-4 w-4" />
                     </button>

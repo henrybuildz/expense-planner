@@ -26,10 +26,21 @@ export default function TransactionForm({ editing, onSubmit, onCancel }) {
   // Load the transaction being edited (or reset when editing stops).
   useEffect(() => {
     setErrors({});
-    setForm(editing ? { ...editing, amount: String(editing.amount) } : blank());
+    setForm(editing ? { ...editing, amount: editing.amount.toFixed(2) } : blank());
   }, [editing]);
 
-  const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  // Move focus into the form when a different record starts being edited (not on every re-render of the same one).
+  const editingId = editing ? editing.id : null;
+  useEffect(() => {
+    if (editingId) document.getElementById('tx-amount')?.focus();
+  }, [editingId]);
+
+  // Editing a field drops its own error straight away, so a red message never lingers over a value that is now fine.
+  const clearError = (field) => setErrors((er) => (er[field] ? { ...er, [field]: undefined } : er));
+  const set = (field) => (e) => {
+    clearError(field);
+    setForm((f) => ({ ...f, [field]: e.target.value }));
+  };
 
   const setType = (type) =>
     setForm((f) => ({
@@ -68,7 +79,10 @@ export default function TransactionForm({ editing, onSubmit, onCancel }) {
           id="tx-amount"
           placeholder="0.00"
           value={form.amount}
-          onChange={(v) => setForm((f) => ({ ...f, amount: v }))}
+          onChange={(v) => {
+            clearError('amount');
+            setForm((f) => ({ ...f, amount: v }));
+          }}
           className={`input ${invalid('amount')}`}
           aria-invalid={!!errors.amount}
         />
@@ -95,7 +109,10 @@ export default function TransactionForm({ editing, onSubmit, onCancel }) {
         <DateInput
           id="tx-date"
           value={form.date}
-          onChange={(date) => setForm((f) => ({ ...f, date }))}
+          onChange={(date) => {
+            clearError('date');
+            setForm((f) => ({ ...f, date }));
+          }}
           className={`input ${invalid('date')}`}
           aria-invalid={!!errors.date}
         />

@@ -130,6 +130,39 @@ export function AppProvider({ children }) {
     [setSubscriptions]
   );
 
+  // "Mark paid" for the UI: moves the due date AND records the payment as an expense, so Dashboard and
+  // Budgets see what subscriptions really cost. Returns the new transaction's id so an Undo can remove it.
+  const paySubscription = useCallback(
+    (s) => {
+      const txId = uid();
+      const today = todayISO();
+      setSubscriptions((prev) =>
+        prev.map((x) =>
+          x.id === s.id ? { ...x, lastPaid: today, nextDue: addCycle(x.nextDue, x.cycle, x.anchorDay) } : x
+        )
+      );
+      setTransactions((prev) => [
+        { id: txId, type: 'expense', amount: s.cost, category: 'Subscriptions', date: today, notes: s.name },
+        ...prev,
+      ]);
+      return txId;
+    },
+    [setSubscriptions, setTransactions]
+  );
+  // Undo of paySubscription: put the previous dates back and drop the expense it recorded. Anything else
+  // edited on the subscription meanwhile (name, cost) is kept.
+  const undoPaySubscription = useCallback(
+    (before, txId) => {
+      setSubscriptions((prev) =>
+        prev.map((x) =>
+          x.id === before.id ? { ...x, lastPaid: before.lastPaid, nextDue: before.nextDue } : x
+        )
+      );
+      setTransactions((prev) => prev.filter((t) => t.id !== txId));
+    },
+    [setSubscriptions, setTransactions]
+  );
+
   // Used by the sync engine to apply changes pulled from the server. Always a functional update,
   // so edits made while a sync is in flight are never overwritten.
   const updateTable = useCallback(
@@ -221,6 +254,8 @@ export function AppProvider({ children }) {
       updateSubscription,
       deleteSubscription,
       markSubscriptionPaid,
+      paySubscription,
+      undoPaySubscription,
     }),
     [
       transactions,
@@ -247,6 +282,8 @@ export function AppProvider({ children }) {
       updateSubscription,
       deleteSubscription,
       markSubscriptionPaid,
+      paySubscription,
+      undoPaySubscription,
     ]
   );
 

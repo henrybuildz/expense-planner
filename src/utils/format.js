@@ -1,10 +1,19 @@
 import { CURRENCY } from '../constants/currency';
 
+// MAX_AMOUNT is 1e9 (10 digits). The field used to take 12 digits and then refuse the value on save.
+const MAX_INT_DIGITS = 10;
+
 const money = new Intl.NumberFormat(CURRENCY.locale, { style: 'currency', currency: CURRENCY.code });
 
-export const formatMoney = (n) => money.format(Number.isFinite(n) ? n : 0);
+// A real minus sign (U+2212) instead of the hyphen: a hyphen is a line-break opportunity, so a long
+// negative amount used to wrap with the "-" alone on the line above the number.
+export const formatMoney = (n) => money.format(Number.isFinite(n) ? n : 0).replace(/^-/, '\u2212');
 
-export const formatPercent = (n, digits = 0) => `${(n || 0).toFixed(digits)}%`;
+export const formatPercent = (n, digits = 0) => {
+  const text = (n || 0).toFixed(digits);
+  // "-0.4" rounds to "-0": show 0%, never "−0%".
+  return /^-0(\.0+)?$/.test(text) ? `${text.slice(1)}%` : `${text.replace(/^-/, '\u2212')}%`;
+};
 
 export function uid() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -17,9 +26,9 @@ export function cleanNumberText(text, { integer = false } = {}) {
   if (integer) return text.replace(/\D/g, '').slice(0, 6);
   const kept = text.replace(/[^\d.,]/g, '');
   const at = kept.search(/[.,]/);
-  if (at === -1) return kept.slice(0, 12);
+  if (at === -1) return kept.slice(0, MAX_INT_DIGITS);
   const decimals = kept.slice(at + 1).replace(/[.,]/g, '').slice(0, 2);
-  return `${kept.slice(0, at).slice(0, 12)}${kept[at]}${decimals}`;
+  return `${kept.slice(0, at).slice(0, MAX_INT_DIGITS)}${kept[at]}${decimals}`;
 }
 
 // Turns PASTED text like "1,234.56", "1.234,56", "€ 1 234,50" or "1,000,000" into a plain amount.

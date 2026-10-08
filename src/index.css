@@ -34,7 +34,7 @@
     @apply bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50;
   }
   .btn-icon {
-    @apply rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50;
+    @apply rounded-md p-1.5 text-slate-500 transition [@media(pointer:coarse)]:p-2.5 hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50;
   }
 }
 

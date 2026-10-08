@@ -5,9 +5,9 @@ import { weekSummary } from '../../utils/stats';
 
 function Figure({ label, value, tone }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={`mt-1 text-xl font-semibold tabular-nums ${tone}`}>{value}</p>
+      <p className={`mt-1 break-words text-xl font-semibold tabular-nums ${tone}`}>{value}</p>
     </div>
   );
 }
@@ -69,13 +69,13 @@ export default function WeekSummary({ transactions, today }) {
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-4">
-        <Figure label="Income" value={formatMoney(week.income)} tone="text-emerald-600" />
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+        <Figure label="Income" value={formatMoney(week.income)} tone="text-emerald-700" />
         <Figure label="Expenses" value={formatMoney(week.expense)} tone="text-rose-600" />
         <Figure
           label="Net"
           value={formatMoney(week.net)}
-          tone={week.net >= 0 ? 'text-emerald-600' : 'text-rose-600'}
+          tone={week.net >= 0 ? 'text-emerald-700' : 'text-rose-600'}
         />
       </div>
       {week.count === 0 && (

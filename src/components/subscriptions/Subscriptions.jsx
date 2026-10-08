@@ -34,7 +34,8 @@ export default function Subscriptions() {
     updateSubscription,
     deleteSubscription,
     restoreSubscription,
-    markSubscriptionPaid,
+    paySubscription,
+    undoPaySubscription,
   } = useApp();
   const { notify } = useUndo();
   const [editingId, setEditingId] = useState(null);
@@ -57,6 +58,15 @@ export default function Subscriptions() {
       soonAmount: sumMoney(soon.map((s) => s.cost)),
     };
   }, [subscriptions, today]);
+
+  const handlePaid = (s) => {
+    const txId = paySubscription(s);
+    notify({
+      message: `${s.name} marked paid`,
+      detail: `${formatMoney(s.cost)} recorded as an expense`,
+      onUndo: () => undoPaySubscription(s, txId),
+    });
+  };
 
   const handleSubmit = (data) => {
     if (editing) {
@@ -126,7 +136,10 @@ export default function Subscriptions() {
               {sorted.map((s) => {
                 const due = dueInfo(s.nextDue, today);
                 return (
-                  <li key={s.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
+                  <li
+                    key={s.id}
+                    className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_9.5rem_6rem_auto]"
+                  >
                     <div className="min-w-0 flex-1 basis-40">
                       <p className="truncate font-medium">{s.name}</p>
                       <p className="text-xs text-slate-500">
@@ -135,18 +148,22 @@ export default function Subscriptions() {
                         {s.lastPaid && ` · last paid ${formatDate(s.lastPaid)}`}
                       </p>
                     </div>
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${due.cls}`}>
+                    <span className={`rounded-full px-2.5 py-0.5 text-center text-xs font-medium sm:block ${due.cls}`}>
                       {due.text}
                     </span>
-                    <span className="w-20 text-right text-sm font-semibold tabular-nums text-rose-600">
+                    <span
+                      className={`min-w-20 text-right text-sm font-semibold tabular-nums ${
+                        daysUntil(s.nextDue, today) < 0 ? 'text-rose-600' : 'text-slate-800'
+                      }`}
+                    >
                       {formatMoney(s.cost)}
                     </span>
                     <div className="flex items-center">
                       <button
                         type="button"
                         className="btn btn-secondary !px-2.5 !py-1 text-xs"
-                        onClick={() => markSubscriptionPaid(s.id)}
-                        title="Record a payment and move the due date forward one cycle"
+                        onClick={() => handlePaid(s)}
+                        title="Record this payment as an expense and move the due date forward one cycle"
                       >
                         <Icon name="check" className="h-3.5 w-3.5" /> Mark paid
                       </button>

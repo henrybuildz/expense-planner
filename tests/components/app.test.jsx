@@ -58,16 +58,84 @@ describe('App (smoke test through the real screens)', () => {
     await userEvent.type(screen.getByLabelText(/amount/i), '0.004'); // the box stops at two decimals: 0.00
     expect(screen.getByLabelText(/amount/i)).toHaveValue('0.00');
     await userEvent.click(screen.getByRole('button', { name: 'Add transaction' }));
-    expect(await screen.findByText(/amount greater than 0/i)).toBeInTheDocument();
+    // "0.00" is not "greater than 0" in any useful sense: the message must name the real minimum (EUR 0.01).
+    expect(await screen.findByText(/smallest amount is/i)).toBeInTheDocument();
     expect(screen.getByText(/choose a category/i)).toBeInTheDocument();
     expect(stored('transactions')).toEqual([]);
+  });
+
+  it('an amount error disappears as soon as the amount is corrected', async () => {
+    render(<App />);
+    await openTab('Transactions');
+    await userEvent.click(screen.getByRole('button', { name: 'Add transaction' }));
+    expect(await screen.findByText(/amount greater than 0/i)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/amount/i), '5');
+    expect(screen.queryByText(/amount greater than 0/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/choose a category/i)).toBeInTheDocument(); // untouched fields keep their error
+  });
+
+  it('opening Edit moves focus into the form', async () => {
+    localStorage.setItem('expense-planner:transactions', JSON.stringify([tx('a', { notes: 'lunch' })]));
+    render(<App />);
+    await openTab('Transactions');
+    await userEvent.click(screen.getByRole('button', { name: /^Edit Food transaction/ }));
+    expect(screen.getByLabelText(/amount/i)).toHaveFocus();
+  });
+
+  it('delete and edit buttons tell identical-category rows apart', async () => {
+    localStorage.setItem(
+      'expense-planner:transactions',
+      JSON.stringify([tx('a', { amount: 5 }), tx('b', { amount: 7 })])
+    );
+    render(<App />);
+    await openTab('Transactions');
+    expect(screen.getByRole('button', { name: /^Delete Food transaction, €5\.00/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Delete Food transaction, €7\.00/ })).toBeInTheDocument();
+  });
+
+  it('Mark paid records an expense on the Dashboard totals and Undo takes it back', async () => {
+    const due = new Date();
+    const iso = `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`;
+    localStorage.setItem(
+      'expense-planner:subscriptions',
+      JSON.stringify([{ id: 's1', name: 'Gym', cost: 9.5, cycle: 'weekly', nextDue: iso, lastPaid: '', anchorDay: 1 }])
+    );
+    render(<App />);
+    await openTab('Subscriptions');
+    await userEvent.click(screen.getByRole('button', { name: /mark paid/i }));
+    expect(stored('transactions')).toHaveLength(1);
+    expect(stored('transactions')[0]).toMatchObject({ category: 'Subscriptions', amount: 9.5, notes: 'Gym' });
+    await userEvent.click(screen.getByRole('button', { name: /^undo/i }));
+    expect(stored('transactions')).toEqual([]);
+  });
+
+  it('the skip link moves focus to the content without touching the address', async () => {
+    render(<App />);
+    const before = window.location.href;
+    await userEvent.click(screen.getByRole('link', { name: /skip to content/i }));
+    expect(document.getElementById('panel')).toHaveFocus();
+    expect(window.location.href).toBe(before);
+  });
+
+  it('the page title follows the screen', async () => {
+    render(<App />);
+    expect(document.title).toBe('Dashboard · Pocket Book');
+    await openTab('Budgets');
+    expect(document.title).toBe('Budgets · Pocket Book');
+  });
+
+  it('the calculator starts empty instead of with made-up data', async () => {
+    render(<App />);
+    await openTab('Calculator');
+    expect(screen.getByLabelText(/amount/i)).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Save as transaction' })).toBeDisabled();
   });
 
   it('a delete shows the undo bar and Undo brings the record back', async () => {
     localStorage.setItem('expense-planner:transactions', JSON.stringify([tx('a', { notes: 'lunch' })]));
     render(<App />);
     await openTab('Transactions');
-    await userEvent.click(screen.getByRole('button', { name: 'Delete Food transaction' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Delete Food transaction/ }));
     expect(stored('transactions')).toEqual([]);
     await userEvent.click(screen.getByRole('button', { name: 'Undo' }));
     expect(stored('transactions')).toHaveLength(1);

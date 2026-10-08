@@ -15,10 +15,21 @@ export default function SubscriptionForm({ editing, onSubmit, onCancel }) {
 
   useEffect(() => {
     setErrors({});
-    setForm(editing ? { ...editing, cost: String(editing.cost) } : blank());
+    setForm(editing ? { ...editing, cost: editing.cost.toFixed(2) } : blank());
   }, [editing]);
 
-  const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  // Move focus into the form when a different record starts being edited (not on every re-render of the same one).
+  const editingId = editing ? editing.id : null;
+  useEffect(() => {
+    if (editingId) document.getElementById('s-name')?.focus();
+  }, [editingId]);
+
+  // Editing a field drops its own error at once, so a red message never lingers over a value that is now fine.
+  const clearError = (field) => setErrors((er) => (er[field] ? { ...er, [field]: undefined } : er));
+  const set = (field) => (e) => {
+    clearError(field);
+    setForm((f) => ({ ...f, [field]: e.target.value }));
+  };
 
   const submit = (e) => {
     e.preventDefault();
@@ -62,7 +73,10 @@ export default function SubscriptionForm({ editing, onSubmit, onCancel }) {
             id="s-cost"
             placeholder="0.00"
             value={form.cost}
-            onChange={(v) => setForm((f) => ({ ...f, cost: v }))}
+            onChange={(v) => {
+              clearError('cost');
+              setForm((f) => ({ ...f, cost: v }));
+            }}
             className={cls('cost')}
           />
         </Field>

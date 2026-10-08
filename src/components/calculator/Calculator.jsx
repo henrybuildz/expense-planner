@@ -29,7 +29,7 @@ const TARGETS = [
 
 export default function Calculator() {
   const { addTransaction, addSubscription } = useApp();
-  const [amount, setAmount] = useState('50');
+  const [amount, setAmount] = useState('');
   const [period, setPeriod] = useState('weekly');
   const [type, setType] = useState('expense');
   const [target, setTarget] = useState('all');
@@ -73,7 +73,7 @@ export default function Calculator() {
   );
 
   const income = type === 'income';
-  const accent = income ? 'text-emerald-600' : 'text-rose-600';
+  const accent = income ? 'text-emerald-700' : 'text-rose-600';
   const cycleOk = isCycle(period);
 
   const changeType = (next) => {
@@ -290,6 +290,9 @@ export default function Calculator() {
               </button>
             )}
           </div>
+          {!valid && (
+            <p className="text-xs text-slate-500">Enter an amount above to enable saving.</p>
+          )}
           {saveError && (
             <p className="field-error" role="alert">
               {saveError}

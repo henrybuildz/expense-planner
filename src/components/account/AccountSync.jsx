@@ -36,7 +36,7 @@ export default function AccountSync() {
             <h2 id="sync-title" className="text-sm font-semibold text-slate-700">
               Sync across devices
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="mt-1 text-sm text-slate-600">
               Optional. Sign in with Google to keep your data the same on all your devices. It then also
               lives on Supabase&apos;s servers, locked to your account (it is not end-to-end encrypted). The
               app keeps working offline either way.

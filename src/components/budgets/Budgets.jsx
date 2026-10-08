@@ -24,7 +24,7 @@ function tone(pct) {
   if (pct >= OVER_AT) return { bar: 'bg-rose-500', text: 'text-rose-600', ring: 'ring-rose-200' };
   if (pct >= WARN_AT) return { bar: 'bg-orange-500', text: 'text-orange-600', ring: 'ring-orange-200' };
   if (pct >= 60) return { bar: 'bg-amber-400', text: 'text-amber-600', ring: 'ring-slate-200/70' };
-  return { bar: 'bg-emerald-500', text: 'text-emerald-600', ring: 'ring-slate-200/70' };
+  return { bar: 'bg-emerald-500', text: 'text-emerald-700', ring: 'ring-slate-200/70' };
 }
 
 export default function Budgets() {
@@ -74,7 +74,7 @@ export default function Budgets() {
 
   const edit = (row) => {
     setCategory(row.name);
-    setLimit(String(row.cap));
+    setLimit(row.cap.toFixed(2));
     setErrors({});
   };
 
@@ -103,7 +103,10 @@ export default function Budgets() {
             id="b-limit"
             placeholder="0.00"
             value={limit}
-            onChange={setLimit}
+            onChange={(v) => {
+              setErrors((er) => (er.limit ? { ...er, limit: undefined } : er));
+              setLimit(v);
+            }}
             className={`input ${errors.limit ? 'input-error' : ''}`}
           />
         </Field>

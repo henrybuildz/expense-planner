@@ -162,7 +162,7 @@ describe('transaction form date field', () => {
     localStorage.setItem('expense-planner:transactions', JSON.stringify([tx('a', '2026-03-09', { notes: 'rent' })]));
     render(<App />);
     await openTab('Transactions');
-    await userEvent.click(screen.getByRole('button', { name: 'Edit Food transaction' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Edit Food transaction/ }));
     expect(screen.getByLabelText('Date')).toHaveValue('09/03/2026');
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(stored('transactions')[0].date).toBe('2026-03-09');
@@ -174,9 +174,9 @@ describe('transaction form date field', () => {
     ]));
     render(<App />);
     await openTab('Transactions');
-    await userEvent.click(screen.getByRole('button', { name: 'Edit Food transaction' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Edit Food transaction/ }));
     expect(screen.getByLabelText('Date')).toHaveValue('09/03/2026');
-    await userEvent.click(screen.getByRole('button', { name: 'Edit Bills transaction' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Edit Bills transaction/ }));
     expect(screen.getByLabelText('Date')).toHaveValue('31/12/2025');
   });
 });

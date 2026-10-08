@@ -43,6 +43,19 @@ describe('AppContext actions', () => {
     expect(seen).toEqual(['2026-02-28', '2026-03-31', '2026-04-30', '2026-05-31']);
   });
 
+  it('paying a subscription also records the expense, and undoing removes only that', () => {
+    const { result } = mount({ subscriptions: [sub('s1', { cost: 12.5, name: 'Gym', nextDue: '2026-10-08', anchorDay: 8 })], transactions: [tx('keep')] });
+    const before = result.current.subscriptions[0];
+    let txId;
+    act(() => { txId = result.current.paySubscription(before); });
+    const paid = result.current.transactions.find((t) => t.id === txId);
+    expect(paid).toMatchObject({ type: 'expense', amount: 12.5, category: 'Subscriptions', notes: 'Gym' });
+    expect(result.current.subscriptions[0].nextDue).toBe('2026-11-08');
+    act(() => result.current.undoPaySubscription(before, txId));
+    expect(result.current.subscriptions[0]).toMatchObject({ nextDue: '2026-10-08', lastPaid: '' });
+    expect(result.current.transactions.map((t) => t.id)).toEqual(['keep']);
+  });
+
   it('editing the due date re-anchors the bill', () => {
     const { result } = mount({ subscriptions: [sub('s1')] });
     act(() => result.current.updateSubscription('s1', { nextDue: '2026-10-15' }));

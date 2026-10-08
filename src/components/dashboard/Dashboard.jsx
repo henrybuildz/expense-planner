@@ -14,9 +14,19 @@ import DonutChart from './DonutChart';
 import MonthlyBars from './MonthlyBars';
 import WeekSummary from './WeekSummary';
 
+// "-24691258% of this month's income" is unreadable; once spending is more than double the income say it as a multiple.
+function savingsHint(rate) {
+  if (rate === null) return 'No income recorded this month';
+  if (rate < -100) {
+    const times = 1 - rate / 100; // spent / earned
+    return times >= 1000 ? "Spent over 1,000× this month's income" : `Spent ${times.toFixed(1)}× this month's income`;
+  }
+  return `${formatPercent(rate)} of this month's income`;
+}
+
 function Metric({ label, value, hint, tone }) {
   const tones = {
-    emerald: 'border-emerald-500 text-emerald-600',
+    emerald: 'border-emerald-500 text-emerald-700',
     rose: 'border-rose-500 text-rose-600',
     slate: 'border-slate-400 text-slate-800',
   };
@@ -24,7 +34,7 @@ function Metric({ label, value, hint, tone }) {
   return (
     <div className={`card border-l-4 ${border}`}>
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={`mt-2 text-2xl font-semibold tabular-nums ${text}`}>{value}</p>
+      <p className={`mt-2 break-words text-2xl font-semibold tabular-nums ${text}`}>{value}</p>
       <p className="mt-1 text-xs text-slate-500">{hint}</p>
     </div>
   );
@@ -67,31 +77,27 @@ export default function Dashboard({ onNavigate }) {
       <BackupNudge />
       <section aria-label="Summary" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Metric
-          label="Total Balance"
+          label="Balance"
           value={formatMoney(stats.balance)}
-          hint="All income minus all expenses"
+          hint="All time: income minus expenses"
           tone={stats.balance >= 0 ? 'slate' : 'rose'}
         />
         <Metric
-          label="Monthly Income"
+          label="Income"
           value={formatMoney(stats.monthIncome)}
-          hint="Earned this month"
+          hint="This month"
           tone="emerald"
         />
         <Metric
-          label="Total Expenses"
+          label="Expenses"
           value={formatMoney(stats.monthExpense)}
-          hint="Spent this month"
+          hint="This month"
           tone="rose"
         />
         <Metric
-          label="Net Savings"
+          label="Net savings"
           value={formatMoney(stats.net)}
-          hint={
-            stats.savingsRate === null
-              ? 'No income recorded this month'
-              : `${formatPercent(stats.savingsRate)} of this month's income`
-          }
+          hint={savingsHint(stats.savingsRate)}
           tone={stats.net >= 0 ? 'emerald' : 'rose'}
         />
       </section>
@@ -101,7 +107,7 @@ export default function Dashboard({ onNavigate }) {
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="card" aria-labelledby="by-category">
           <h2 id="by-category" className="text-sm font-semibold text-slate-700">
-            Spending by category <span className="font-normal text-slate-400">· this month</span>
+            Spending by category <span className="font-normal text-slate-500">· this month</span>
           </h2>
           {stats.byCategory.length === 0 ? (
             <div className="mt-4">
@@ -123,7 +129,7 @@ export default function Dashboard({ onNavigate }) {
                       </span>
                       <span className="tabular-nums text-slate-600">
                         {formatMoney(c.amount)}{' '}
-                        <span className="text-xs text-slate-400">{formatPercent(c.pct)}</span>
+                        <span className="text-xs text-slate-500">{formatPercent(c.pct)}</span>
                       </span>
                     </div>
                     <div className="mt-1 h-1.5 rounded-full bg-slate-100">
@@ -144,7 +150,7 @@ export default function Dashboard({ onNavigate }) {
 
         <section className="card" aria-labelledby="trend">
           <h2 id="trend" className="text-sm font-semibold text-slate-700">
-            Income vs. expenses <span className="font-normal text-slate-400">· last 6 months</span>
+            Income vs. expenses <span className="font-normal text-slate-500">· last 6 months</span>
           </h2>
           <div className="mt-4">
             <MonthlyBars months={stats.months} />
@@ -175,8 +181,8 @@ export default function Dashboard({ onNavigate }) {
               <div className="flex shrink-0 items-center gap-3">
                 <CategoryBadge name={t.category} />
                 <span
-                  className={`w-24 text-right text-sm font-semibold tabular-nums ${
-                    t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
+                  className={`min-w-24 whitespace-nowrap text-right text-sm font-semibold tabular-nums ${
+                    t.type === 'income' ? 'text-emerald-700' : 'text-rose-600'
                   }`}
                 >
                   {t.type === 'income' ? '+' : '−'}

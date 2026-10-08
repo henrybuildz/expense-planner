@@ -6,6 +6,9 @@ import { formatMoney } from '../../utils/format';
 const R = 15.9155;
 
 export default function DonutChart({ segments, total }) {
+  // The hole is about 6.5rem wide: shrink the figure for long totals so it never runs over the ring.
+  const shown = formatMoney(total);
+  const size = shown.length > 12 ? 'text-xs' : shown.length > 9 ? 'text-sm' : 'text-base';
   let offset = 0;
   return (
     <div className="relative h-44 w-44 shrink-0">
@@ -38,7 +41,7 @@ export default function DonutChart({ segments, total }) {
       </svg>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-xs text-slate-500">Spent</span>
-        <span className="text-base font-semibold tabular-nums">{formatMoney(total)}</span>
+        <span className={`${size} font-semibold tabular-nums`}>{shown}</span>
       </div>
     </div>
   );

@@ -26,6 +26,9 @@ describe('parseMoney (validation + rounding to cents)', () => {
   it('rounds to cents first, then checks it is at least 0.01', () => {
     // Regression: 0.004 used to pass ">0", round to 0 and be silently dropped on reload.
     expect(parseMoney('0.004').error).toMatch(/smallest amount/i);
+    expect(parseMoney('0.00').error).toMatch(/smallest amount/i); // what typing "0.005" leaves in the box
+    expect(parseMoney('0').error).toMatch(/smallest amount/i);
+    expect(parseMoney('').error).toMatch(/greater than 0/i);
     expect(parseMoney('0.005')).toEqual({ value: 0.01 });
     expect(parseMoney('1.005')).toEqual({ value: 1.01 });
     expect(parseMoney('12,50')).toEqual({ value: 12.5 });
@@ -72,7 +75,7 @@ describe('cleanNumberText (what stays in the box while typing)', () => {
   ])('%j -> %j', (typed, kept) => expect(cleanNumberText(typed)).toBe(kept));
 
   it('caps length and supports whole-number mode', () => {
-    expect(cleanNumberText('1'.repeat(30))).toHaveLength(12);
+    expect(cleanNumberText('1'.repeat(30))).toHaveLength(10);
     expect(cleanNumberText('12.5x', { integer: true })).toBe('125');
     expect(cleanNumberText('9999999', { integer: true })).toBe('999999');
   });
@@ -112,8 +115,21 @@ describe('normalizePastedAmount (thousands separators)', () => {
 describe('formatMoney (euro display)', () => {
   it('formats with the euro sign and two decimals', () => {
     expect(formatMoney(1234.5)).toBe('€1,234.50');
-    expect(formatMoney(-5)).toBe('-€5.00');
+    expect(formatMoney(-5)).toBe('\u2212€5.00');
     expect(formatMoney(0)).toBe('€0.00');
+  });
+
+  it('never shows a negative zero percentage', async () => {
+    const { formatPercent } = await import('../src/utils/format');
+    expect(formatPercent(-0.4)).toBe('0%');
+    expect(formatPercent(-0.04, 1)).toBe('0.0%');
+    expect(formatPercent(-12.4)).toBe('\u221212%');
+    expect(formatPercent(null)).toBe('0%');
+  });
+
+  it('keeps the minus sign glued to the number (a hyphen allows a line break after it)', () => {
+    expect(formatMoney(-1234567.89)).toBe('\u2212€1,234,567.89');
+    expect(formatMoney(-1234567.89)).not.toContain('-');
   });
   it('never prints NaN', () => {
     expect(formatMoney(NaN)).toBe('€0.00');

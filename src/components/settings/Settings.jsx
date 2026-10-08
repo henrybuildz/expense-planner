@@ -27,10 +27,12 @@ export default function Settings({ onClose, onTestAppCrash }) {
         <DataBackup />
       </div>
 
-      <section className="card" aria-labelledby="trouble-title">
-        <h2 id="trouble-title" className="text-sm font-semibold text-slate-700">
-          Troubleshooting
-        </h2>
+      <details className="card">
+        <summary className="cursor-pointer">
+          <h2 id="trouble-title" className="inline text-sm font-semibold text-slate-700">
+            Troubleshooting
+          </h2>
+        </summary>
         <p className="mt-1 max-w-3xl text-sm text-slate-600">
           If something ever breaks, Pocket Book shows a recovery screen where you can try again, reload, or save
           a copy of your data. These buttons show you that screen on purpose. Nothing is changed or deleted.
@@ -44,7 +46,7 @@ export default function Settings({ onClose, onTestAppCrash }) {
           </button>
         </div>
         {sectionBomb && <TestBomb />}
-      </section>
+      </details>
 
       <section className="card" aria-labelledby="about-title">
         <h2 id="about-title" className="text-sm font-semibold text-slate-700">

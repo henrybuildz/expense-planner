@@ -54,6 +54,11 @@ function Shell() {
     }
   });
   const { signedIn, status } = useSync();
+  // The browser tab / history entry names the current screen instead of always saying "Pocket Book".
+  useEffect(() => {
+    const name = showSettings ? 'Settings' : TABS.find((t) => t.id === tab)?.label;
+    document.title = name ? `${name} · Pocket Book` : 'Pocket Book';
+  }, [tab, showSettings]);
   const [appBomb, setAppBomb] = useState(false); // Settings > Troubleshooting: preview the full-app crash screen
   const [storageBroken, setStorageBroken] = useState(hasStorageFailed);
 
@@ -106,6 +111,17 @@ function Shell() {
 
   return (
     <div className="min-h-screen pb-10">
+      <a
+        href="#panel"
+        onClick={(e) => {
+          // Move focus without writing "#panel" into the address bar (and the history).
+          e.preventDefault();
+          document.getElementById('panel')?.focus();
+        }}
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg focus:ring-2 focus:ring-emerald-500"
+      >
+        Skip to content
+      </a>
       <header
         className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur"
         // Keeps the title clear of the notch / status bar when installed on a phone.
@@ -193,13 +209,13 @@ function Shell() {
 
       {/* A crash in one section must not take the header and tabs down with it; switching tab retries. */}
       {showSettings ? (
-        <main id="panel" aria-labelledby="settings-title" className={`${GUTTER} py-6`}>
+        <main id="panel" tabIndex={-1} aria-labelledby="settings-title" className={`${GUTTER} py-6 focus:outline-none`}>
           <ErrorBoundary variant="panel" resetKey="settings">
             <Settings onClose={() => setShowSettings(false)} onTestAppCrash={() => setAppBomb(true)} />
           </ErrorBoundary>
         </main>
       ) : (
-        <main id="panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className={`${GUTTER} py-6`}>
+        <main id="panel" tabIndex={-1} role="tabpanel" aria-labelledby={`tab-${tab}`} className={`${GUTTER} py-6 focus:outline-none`}>
           <ErrorBoundary variant="panel" resetKey={tab}>
             {tab === 'dashboard' && <Dashboard onNavigate={goToTab} />}
             {tab === 'transactions' && <Transactions />}
