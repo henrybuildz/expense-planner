@@ -72,6 +72,19 @@ Off unless `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are set at bu
 - Not end-to-end encrypted: data is stored on Supabase's servers. Free-plan projects pause after about a week of low activity.
 - Security policy: `nginx.conf` sends a Content-Security-Policy header (`connect-src https://*.supabase.co`). GitHub Pages cannot send headers, so production builds embed the same policy as a `<meta>` tag (`vite.config.js`, build only, limited to the exact `VITE_SUPABASE_URL` origin). `frame-ancestors` cannot be set via `<meta>`, so clickjacking protection exists only behind nginx. Update the policy in both places if you add an external origin.
 
+## Launch splash
+
+A green screen where the three logo bars pop up one after another, "Pocket Book" fades in, and the screen lifts away like a curtain (about 2.2 s). It is plain HTML + CSS inside `index.html` (so it paints instantly, before any JavaScript loads) plus a tiny controller, `public/splash.js` (external because the CSP only allows scripts from this site; it must also stay in the service worker's `SHELL` list so it works offline).
+
+- Plays once per launch (`sessionStorage` flag), not on every refresh. Add `?splash` to the URL to force it, e.g. when tuning it.
+- Tap/click/any key skips it. With `prefers-reduced-motion` it becomes a short fade.
+- **Doubles as a loading screen:** the curtain is due to lift at 1.65 s; if the app has not mounted into `#root` by then (slow connection) `splash.js` pauses the exit and resumes it as soon as the app appears (`MutationObserver`), never waiting longer than `MAX_WAIT_MS` (8 s). A tap releases it immediately. Note `el.getAnimations()` needs `{ subtree: true }`: the intro clock lives on a child element.
+- Fail-safe: the CSS animation ends hidden (`visibility: hidden`, moved off-screen) by itself, and a timer removes the element, so a JavaScript failure or blocked animations can never leave the app covered for long.
+- The exit is compositor-only (a `transform`): the curved lower edge is a static lobe (`#splash::after`) hanging just below the screen that rides along with the curtain, instead of an animated `border-radius`. The glow is a separate `::before` layer that fades out before the bottom edge so the lobe has no visible seam.
+- `splash.js` is cached by the service worker (stale-while-revalidate), so after changing it bump `VERSION` in `public/sw.js`.
+- `manifest.json` `background_color` is the same green so the OS launch screen of the installed app flows into it.
+- Timeline lives in the `<style>` block of `index.html` (bars 0.2/0.38/0.56 s, title 1.0 s, exit starts 1.65 s).
+
 ## Currency
 
 The app displays euros (EUR). It is defined once in `src/constants/currency.js` (code, symbol, number-format locale `en-IE`, which gives `€1,234.50`; use `de-DE` for `1.234,50 €`). Amounts are stored as plain numbers with no currency attached, so changing the constant only changes display and does not convert existing values.
@@ -91,7 +104,7 @@ Import validates the file (`src/utils/backup.js`) with the same sanitizers used 
 
 ```
 index.html, vite.config.js, tailwind.config.js, postcss.config.js
-public/               manifest.json, sw.js, favicon.svg, icons/
+public/               manifest.json, sw.js, splash.js, favicon.svg, icons/
 scripts/              generate_icons.py
 src/
   main.jsx            entry point + service worker registration

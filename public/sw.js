@@ -9,7 +9,7 @@
  *
  * Bump VERSION to force old caches to be dropped.
  */
-const VERSION = 'v5';
+const VERSION = 'v7';
 const CACHE = `expense-planner-${VERSION}`;
 // Parser-initiated <script>/<link> requests send different headers (Accept, CORS mode)
 // than the fetch() that stored them, so a server's `Vary` header would make every
@@ -19,6 +19,7 @@ const SHELL = [
   './',
   './index.html',
   './manifest.json',
+  './splash.js',
   './favicon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
