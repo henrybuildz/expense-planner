@@ -8,7 +8,17 @@ export const persistenceSupported = () => {
   return Boolean(s && typeof s.persist === 'function' && typeof s.persisted === 'function');
 };
 
-/** Asks the browser to protect the data. Returns 'protected' | 'not-protected' | 'unsupported'. Never throws. */
+/** 'protected' | 'not-protected' | 'unsupported' */
+export async function persistenceStatus() {
+  if (!persistenceSupported()) return 'unsupported';
+  try {
+    return (await api().persisted()) ? 'protected' : 'not-protected';
+  } catch {
+    return 'unsupported';
+  }
+}
+
+/** Asks the browser to protect the data. Same return values as persistenceStatus. Never throws. */
 export async function requestPersistence() {
   if (!persistenceSupported()) return 'unsupported';
   try {

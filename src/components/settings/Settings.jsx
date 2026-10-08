@@ -1,5 +1,6 @@
 import AccountSync from '../account/AccountSync';
 import DataBackup from '../backup/DataBackup';
+import DataProtection from './DataProtection';
 import { syncEnabled } from '../../lib/supabase';
 import Icon from '../ui/Icon';
 
@@ -15,6 +16,8 @@ export default function Settings({ onClose }) {
           Settings
         </h2>
       </div>
+
+      <DataProtection />
 
       <div className={`grid items-start gap-6 ${syncEnabled ? 'lg:grid-cols-2' : ''}`}>
         <AccountSync />

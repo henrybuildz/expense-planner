@@ -32,17 +32,19 @@ function Toast({ toast, onUndo, onDismiss }) {
     >
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{toast.message}</p>
-          {toast.detail && <p className="truncate text-xs text-slate-300">{toast.detail}</p>}
-          <span className="sr-only">Press Control or Command Z to undo.</span>
+          <p className={`text-sm font-medium ${toast.onUndo ? 'truncate' : ''}`}>{toast.message}</p>
+          {toast.detail && <p className={`text-xs text-slate-300 ${toast.onUndo ? 'truncate' : ''}`}>{toast.detail}</p>}
+          {toast.onUndo && <span className="sr-only">Press Control or Command Z to undo.</span>}
         </div>
-        <button
-          type="button"
-          onClick={() => onUndo(toast.id)}
-          className="shrink-0 rounded-md px-2 py-1 text-sm font-semibold text-emerald-300 transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
-        >
-          Undo
-        </button>
+        {toast.onUndo && (
+          <button
+            type="button"
+            onClick={() => onUndo(toast.id)}
+            className="shrink-0 rounded-md px-2 py-1 text-sm font-semibold text-emerald-300 transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+          >
+            Undo
+          </button>
+        )}
         <button
           type="button"
           aria-label="Dismiss"

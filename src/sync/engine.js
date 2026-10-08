@@ -78,7 +78,9 @@ export function applyRows(table, records, rows) {
  *   meta   : { snapshot, cursors, save() }
  */
 export async function runSync({ remote, userId, store, meta, allowMassDelete = false }) {
-  const report = { pushed: 0, deleted: 0, pulled: 0, skipped: 0 };
+  // removedHere: records another device deleted that this device still had. held: records this device had when
+  // the pull started. removedHere >= held means "everything was deleted from another device".
+  const report = { pushed: 0, deleted: 0, pulled: 0, skipped: 0, removedHere: 0, held: 0 };
 
   // Check every table BEFORE pushing anything, so a blocked sync changes nothing on the server.
   if (!allowMassDelete) {
@@ -113,6 +115,8 @@ export async function runSync({ remote, userId, store, meta, allowMassDelete = f
 
     // ---- pull changes made on other devices
     const rows = await remote.changedSince(table, meta.cursors[name] ?? null);
+    const local = table.toList(store.get(name));
+    report.held += local.length;
     if (rows.length) {
       const { applied, removed, skipped } = applyRows(table, table.toList(store.get(name)), rows);
       // Re-applied on the freshest state at commit time, so edits made while we waited are kept.
@@ -121,6 +125,9 @@ export async function runSync({ remote, userId, store, meta, allowMassDelete = f
       for (const key of removed) delete snapshot[key];
       meta.cursors[name] = rows[rows.length - 1].updated_at; // rows arrive oldest-first
       report.pulled += applied.length + removed.length;
+      // Our own deletes come back as tombstones too; only count the ones that were still here.
+      const heldKeys = new Set(local.map((r) => r[table.key])); // only built when there is something to compare
+      report.removedHere += removed.filter((key) => heldKeys.has(key)).length;
       report.skipped += skipped;
     }
     meta.save();

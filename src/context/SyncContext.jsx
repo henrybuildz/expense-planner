@@ -31,7 +31,7 @@ const FIRST_SYNC_WAIT_MS = 15000;
 
 export function SyncProvider({ children }) {
   const app = useApp();
-  const { dismissAll } = useUndo(); // so wiping a device also closes any pending undo bars
+  const { dismissAll, notify } = useUndo(); // so discarding another account's data also closes any pending undo bars
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(!syncEnabled);
   const [status, setStatus] = useState('idle'); // idle | syncing | offline | error
@@ -51,7 +51,6 @@ export function SyncProvider({ children }) {
   const running = useRef(false);
   const again = useRef(false);
   const timer = useRef(null);
-  const wiping = useRef(false);
   const permitDeletes = useRef(false); // true right after a deliberate bulk delete
   const pendingMetaReset = useRef(false); // another tab erased the sync bookkeeping while we were syncing
 
@@ -129,7 +128,7 @@ export function SyncProvider({ children }) {
   // ---------------------------------------------------------------- syncing
   const syncNow = useCallback(async () => {
     const current = userRef.current;
-    if (!supabase || !current || wiping.current) return false;
+    if (!supabase || !current) return false;
     if (running.current) {
       again.current = true; // run once more when the current sync finishes
       return true;
@@ -155,7 +154,7 @@ export function SyncProvider({ children }) {
         }
         meta.reset(current.id);
       }
-      await runSync({
+      const report = await runSync({
         remote: createRemote(supabase),
         userId: current.id,
         store,
@@ -163,6 +162,17 @@ export function SyncProvider({ children }) {
         allowMassDelete: permitDeletes.current,
       });
       permitDeletes.current = false;
+      if (report.removedHere > 0) {
+        // Never silent: data vanishing from the screen because another device deleted it looks like a bug.
+        const everything = report.removedHere >= report.held;
+        notify({
+          message: everything
+            ? 'All your data was deleted from another device'
+            : `${report.removedHere} record${report.removedHere === 1 ? ' was' : 's were'} deleted from another device`,
+          detail: 'This account is signed in on other devices. Import a backup if you need it back.',
+          duration: 15000,
+        });
+      }
       setAttention(null);
       setStatus('idle');
       setError('');
@@ -191,7 +201,7 @@ export function SyncProvider({ children }) {
       }
     }
     return succeeded;
-  }, [store, dismissAll]);
+  }, [store, dismissAll, notify]);
 
   // Coalesces bursts of triggers (typing, focus + visibility events, ...) into a single sync.
   const requestSync = useCallback(
@@ -242,7 +252,15 @@ export function SyncProvider({ children }) {
     } catch {
       /* private mode: the user just lands on their last tab */
     }
-    const { error: e } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
+    const { error: e } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+        // Without this Google silently re-approves whichever account is already signed in to the browser, so after
+        // signing out you were signed straight back in with no chance to pick (or add) another account.
+        queryParams: { prompt: 'select_account' },
+      },
+    });
     if (e) setError(errorText(e));
   }, []);
 
@@ -269,33 +287,16 @@ export function SyncProvider({ children }) {
 
   // Call right before a deliberate bulk delete (Delete all data, Replace import) so the brake allows it.
   const permitMassDelete = useCallback(() => {
+    if (!userRef.current) {
+      // Signed out: nobody is syncing, so this delete must stay on THIS device. Forget the sync bookkeeping,
+      // otherwise signing back in later would see "everything deleted" and the permission given here would let it
+      // wipe the account on every device. With the bookkeeping gone the next sign-in simply merges the account back.
+      metaRef.current.reset(null);
+      permitDeletes.current = false;
+      return;
+    }
     permitDeletes.current = true;
   }, []);
-
-  // Sign out AND remove this account's data from this device (for shared / borrowed computers).
-  const signOutAndWipe = useCallback(async () => {
-    clearTimeout(timer.current);
-    await waitUntil(() => !running.current, 10000);
-    const synced = await syncNow(); // make sure nothing is lost before it is removed here
-    await waitUntil(() => !running.current, 10000);
-    if (!synced && hasPendingChanges(metaRef.current, getRecords)) {
-      const go = window.confirm('Some recent changes could not be uploaded and will be lost if you continue. Remove the data from this device anyway?');
-      if (!go) return;
-    }
-    wiping.current = true; // from here no sync may start (it could push or show a stale error)
-    try {
-      await supabase.auth.signOut(); // sign out first, so clearing below is never pushed as deletions
-      userRef.current = null;
-      clearTimeout(timer.current);
-      metaRef.current.reset(null);
-      latest.current.clearAll();
-      dismissAll(); // a leftover Undo must not restore data onto a device that was just wiped
-      setStatus('idle');
-      setError('');
-    } finally {
-      wiping.current = false;
-    }
-  }, [syncNow, getRecords, dismissAll]);
 
   const value = useMemo(
     () => ({
@@ -313,10 +314,9 @@ export function SyncProvider({ children }) {
       permitMassDelete,
       signIn,
       signOut,
-      signOutAndWipe,
       syncNow,
     }),
-    [authReady, user, status, lastSyncedAt, loadingAccountData, error, attention, restoreFromAccount, deleteEverywhere, permitMassDelete, signIn, signOut, signOutAndWipe, syncNow]
+    [authReady, user, status, lastSyncedAt, loadingAccountData, error, attention, restoreFromAccount, deleteEverywhere, permitMassDelete, signIn, signOut, syncNow]
   );
 
   return (

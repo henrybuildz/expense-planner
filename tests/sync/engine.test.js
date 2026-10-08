@@ -323,6 +323,43 @@ describe('mass-delete safety brake', () => {
   });
 });
 
+describe('telling the user another device deleted their data', () => {
+  it('reports how many records another device removed, and that it was everything', async () => {
+    const { A, B } = setup();
+    A.state.transactions.push(tx('t1'), tx('t2'));
+    A.state.budgets.Food = 100;
+    await A.sync(); await B.sync();
+    A.state.transactions = [];
+    A.state.budgets = {};
+    await A.sync({ allowMassDelete: true });
+    const report = await B.sync();
+    expect(report.removedHere).toBe(3);
+    expect(report.removedHere).toBeGreaterThanOrEqual(report.held); // = "everything was deleted"
+    expect(B.ids()).toEqual([]);
+  });
+
+  it('a partial delete reports fewer than held, and says nothing when nothing was removed', async () => {
+    const { A, B } = setup();
+    A.state.transactions.push(tx('t1'), tx('t2'), tx('t3'));
+    await A.sync(); await B.sync();
+    A.state.transactions = A.state.transactions.filter((t) => t.id !== 't1');
+    await A.sync();
+    const report = await B.sync();
+    expect(report.removedHere).toBe(1);
+    expect(report.held).toBeGreaterThan(report.removedHere);
+    expect((await B.sync()).removedHere).toBe(0);
+  });
+
+  it('the device that did the deleting is never told about its own delete (its tombstones come back in the pull)', async () => {
+    const { A, B } = setup();
+    A.state.transactions.push(tx('t1'), tx('t2'));
+    await A.sync(); await B.sync();
+    A.state.transactions = [];
+    const report = await A.sync({ allowMassDelete: true });
+    expect(report.removedHere).toBe(0);
+  });
+});
+
 describe('Undo after the delete already synced', () => {
   it('the restored records come back on every device with every field intact', async () => {
     const server = new Server();

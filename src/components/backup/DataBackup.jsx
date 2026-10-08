@@ -73,10 +73,24 @@ export default function DataBackup() {
     }
   };
 
+  // Delete all data asks for confirmation inline (not a browser pop-up). While signed in it also removes the account's
+  // copy on every device, so there the user has to type DELETE; signed out it only affects this device.
+  const CONFIRM_WORD = 'DELETE';
+  const [confirming, setConfirming] = useState(false);
+  const [typed, setTyped] = useState('');
+  const deleteButton = useRef(null);
+  const closeConfirm = (returnFocus = false) => {
+    setConfirming(false);
+    setTyped('');
+    // Cancel / Escape: put the keyboard back where it was (the button is disabled while the panel is open).
+    if (returnFocus) setTimeout(() => deleteButton.current && deleteButton.current.focus(), 0);
+  };
+  const canDelete = !signedIn || typed.trim().toUpperCase() === CONFIRM_WORD;
+
   const deleteAll = () => {
+    if (!canDelete) return;
     const what = countText({ transactions, budgets, subscriptions });
-    const synced = signedIn ? ' Because you are signed in, this ALSO deletes your synced copy on all your devices.' : '';
-    if (!window.confirm(`Delete ALL your data (${what})?${synced} This cannot be undone. Export first if you want a copy.`)) return;
+    closeConfirm();
     const before = { transactions, budgets, subscriptions }; // what to put back on Undo
     saveSafetyCopy();
     permitMassDelete(); // deliberate: tell the sync safety brake this big delete is intended
@@ -145,8 +159,9 @@ export default function DataBackup() {
           <button
             type="button"
             className="btn btn-secondary !text-rose-600"
-            onClick={deleteAll}
-            disabled={isEmpty}
+            ref={deleteButton}
+            onClick={() => setConfirming(true)}
+            disabled={isEmpty || confirming}
           >
             Delete all data
           </button>
@@ -161,6 +176,57 @@ export default function DataBackup() {
           />
         </div>
       </div>
+
+      {confirming && !isEmpty && (
+        <div
+          className="mt-4 rounded-xl bg-rose-50 p-4 text-sm text-rose-900 ring-1 ring-rose-200"
+          role="group"
+          aria-label="Confirm delete all data"
+          onKeyDown={(e) => e.key === 'Escape' && closeConfirm(true)}
+        >
+          <p className="font-medium">
+            Delete ALL your data ({countText({ transactions, budgets, subscriptions })})?
+          </p>
+          <p className="mt-1">
+            {signedIn
+              ? 'You are signed in, so this ALSO deletes your synced copy on every device signed in with this account.'
+              : 'This only deletes the data on this device. Your synced copy in an account (if you have one) is not touched and comes back when you sign in again.'}{' '}
+            You can undo for a few seconds afterwards. Export first if you want a copy.
+          </p>
+          {signedIn && (
+            <div className="mt-3">
+              <label htmlFor="delete-confirm" className="label">
+                Type {CONFIRM_WORD} to confirm
+              </label>
+              <input
+                id="delete-confirm"
+                type="text"
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && deleteAll()}
+                className="input max-w-xs"
+                autoFocus
+              />
+            </div>
+          )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" className="btn btn-secondary" onClick={() => closeConfirm(true)} autoFocus={!signedIn}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50"
+              onClick={deleteAll}
+              disabled={!canDelete}
+            >
+              Delete everything
+            </button>
+          </div>
+        </div>
+      )}
 
       {pending && (
         <div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm ring-1 ring-slate-200" role="group" aria-label="Import options">

@@ -21,7 +21,7 @@ function statusLine({ status, lastSyncedAt, error }) {
 export default function AccountSync() {
   const {
     enabled, authReady, user, signedIn, status, lastSyncedAt, error, attention,
-    restoreFromAccount, deleteEverywhere, signIn, signOut, signOutAndWipe, syncNow,
+    restoreFromAccount, deleteEverywhere, signIn, signOut, syncNow,
   } = useSync();
 
   // Not configured (no Supabase settings in this build): the app is local-only, as before.
@@ -76,9 +76,6 @@ export default function AccountSync() {
           </button>
           <button type="button" className="btn btn-secondary" onClick={signOut}>
             Sign out
-          </button>
-          <button type="button" className="btn btn-secondary !text-rose-600" onClick={signOutAndWipe}>
-            Sign out and remove data from this device
           </button>
         </div>
       </div>

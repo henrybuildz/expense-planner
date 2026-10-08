@@ -20,10 +20,19 @@ export function UndoProvider({ children }) {
   // Close every bar without undoing anything (used when the device's data is deliberately wiped).
   const dismissAll = useCallback(() => setToasts([]), []);
 
-  // notify({ message, detail?, duration?, onUndo }): the delete has ALREADY happened; onUndo puts it back.
+  // notify({ message, detail?, duration?, onUndo? }): the delete has ALREADY happened; onUndo puts it back.
+  // Without onUndo it is an information-only notice (no Undo button, ignored by Cmd/Ctrl+Z).
   const notify = useCallback((toast) => {
     const id = nextId++;
-    setToasts((list) => [...list, { ...toast, id }].slice(-MAX_VISIBLE));
+    setToasts((list) => {
+      const next = [...list, { ...toast, id }];
+      // Over the limit: drop an information-only notice before any bar that still has an Undo to offer.
+      while (next.length > MAX_VISIBLE) {
+        const at = next.findIndex((t) => !t.onUndo);
+        next.splice(at === -1 ? 0 : at, 1);
+      }
+      return next;
+    });
     return id;
   }, []);
 
@@ -32,7 +41,7 @@ export function UndoProvider({ children }) {
       const toast = latest.current.find((t) => t.id === id);
       if (!toast) return; // already undone or expired
       dismiss(id);
-      toast.onUndo();
+      if (toast.onUndo) toast.onUndo();
     },
     [dismiss]
   );
@@ -42,7 +51,7 @@ export function UndoProvider({ children }) {
     const onKey = (e) => {
       if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'z') return;
       if (isTyping(e.target)) return;
-      const newest = latest.current[latest.current.length - 1];
+      const newest = [...latest.current].reverse().find((t) => t.onUndo); // notices have nothing to undo
       if (!newest) return;
       e.preventDefault();
       undo(newest.id);
