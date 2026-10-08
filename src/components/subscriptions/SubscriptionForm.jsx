@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { CURRENCY } from '../../constants/currency';
 import { CYCLES } from '../../constants/periods';
-import { MAX_DATE, MIN_DATE, isValidISO, todayISO } from '../../utils/dates';
+import { isValidISO, todayISO } from '../../utils/dates';
 import { parseMoney } from '../../utils/money';
+import DateInput from '../ui/DateInput';
 import Field from '../ui/Field';
 import MoneyInput from '../ui/MoneyInput';
 
@@ -25,8 +26,7 @@ export default function SubscriptionForm({ editing, onSubmit, onCancel }) {
     const money = parseMoney(form.cost);
     if (!form.name.trim()) found.name = 'Enter a provider or service name.';
     if (money.error) found.cost = money.error;
-    if (!form.nextDue) found.nextDue = 'Pick the next due date.';
-    else if (!isValidISO(form.nextDue)) found.nextDue = 'Enter a valid date.';
+    if (!form.nextDue || !isValidISO(form.nextDue)) found.nextDue = 'Enter a real due date as DD/MM/YYYY.';
     setErrors(found);
     if (Object.keys(found).length) return;
     onSubmit({
@@ -77,13 +77,10 @@ export default function SubscriptionForm({ editing, onSubmit, onCancel }) {
         </Field>
       </div>
       <Field label="Next due date" htmlFor="s-due" error={errors.nextDue}>
-        <input
+        <DateInput
           id="s-due"
-          type="date"
-          min={MIN_DATE}
-          max={MAX_DATE}
           value={form.nextDue}
-          onChange={set('nextDue')}
+          onChange={(nextDue) => setForm((f) => ({ ...f, nextDue }))}
           className={cls('nextDue')}
         />
       </Field>

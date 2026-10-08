@@ -3,6 +3,10 @@ import { useEffect, useState } from 'react';
 export const STORAGE_ERROR_EVENT = 'expense-planner:storage-error';
 let storageFailed = false;
 export const hasStorageFailed = () => storageFailed;
+// Tests only: the failure latch is module state, so it would otherwise leak from one test into the next.
+export const resetStorageFailureForTests = () => {
+  storageFailed = false;
+};
 
 function reportFailure() {
   storageFailed = true;

@@ -1,6 +1,8 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
+import { resetStorageFailureForTests } from '../src/hooks/useLocalStorage';
+import { resetPersistenceAskedForTests } from '../src/hooks/useRequestPersistence';
 
 // A few test files opt out of the browser (`// @vitest-environment node`), e.g. the one that runs a shell script.
 const inBrowser = typeof window !== 'undefined';
@@ -19,5 +21,7 @@ afterEach(() => {
     localStorage.clear();
     sessionStorage.clear();
   }
+  resetStorageFailureForTests();
+  resetPersistenceAskedForTests();
   vi.useRealTimers();
 });

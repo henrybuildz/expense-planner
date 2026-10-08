@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { categoriesFor } from '../../constants/categories';
 import { CURRENCY } from '../../constants/currency';
-import { MAX_DATE, MIN_DATE, isValidISO, todayISO } from '../../utils/dates';
+import { isValidISO, todayISO } from '../../utils/dates';
 import { parseMoney } from '../../utils/money';
+import DateInput from '../ui/DateInput';
 import Field from '../ui/Field';
 import TypeToggle from '../ui/TypeToggle';
 import MoneyInput from '../ui/MoneyInput';
@@ -14,8 +15,7 @@ function validate(form) {
   const money = parseMoney(form.amount);
   if (money.error) errors.amount = money.error;
   if (!form.category) errors.category = 'Choose a category.';
-  if (!form.date) errors.date = 'Pick a date.';
-  else if (!isValidISO(form.date)) errors.date = 'Enter a valid date.';
+  if (!form.date || !isValidISO(form.date)) errors.date = 'Enter a real date as DD/MM/YYYY.';
   return errors;
 }
 
@@ -92,13 +92,10 @@ export default function TransactionForm({ editing, onSubmit, onCancel }) {
       </Field>
 
       <Field label="Date" htmlFor="tx-date" error={errors.date}>
-        <input
+        <DateInput
           id="tx-date"
-          type="date"
-          min={MIN_DATE}
-          max={MAX_DATE}
           value={form.date}
-          onChange={set('date')}
+          onChange={(date) => setForm((f) => ({ ...f, date }))}
           className={`input ${invalid('date')}`}
           aria-invalid={!!errors.date}
         />

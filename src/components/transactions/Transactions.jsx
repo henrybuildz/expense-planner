@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useUndo } from '../../context/UndoContext';
 import { ALL_CATEGORIES } from '../../constants/categories';
-import { formatDate } from '../../utils/dates';
+import { dateMatchesQuery, formatDate } from '../../utils/dates';
 import { formatMoney } from '../../utils/format';
 import { sumMoney } from '../../utils/money';
 import CategoryBadge from '../ui/CategoryBadge';
@@ -40,7 +40,7 @@ export default function Transactions() {
         return (
           t.notes.toLowerCase().includes(q) ||
           t.category.toLowerCase().includes(q) ||
-          t.date.includes(q) ||
+          dateMatchesQuery(t.date, q) || // the date as shown (DD/MM/YYYY), not the stored YYYY-MM-DD
           String(t.amount).includes(q)
         );
       })

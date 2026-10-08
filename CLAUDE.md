@@ -165,7 +165,7 @@ tests/
   dates / money / sanitize / backup / stats / rescue / storage .test.js   pure logic
   sync/engine.test.js   two or three devices syncing against the fake server
   sync/remote.test.js   remote.js against the REAL supabase-js client with a recording fetch (URLs, headers, bodies, paging)
-  components/           crash screen, undo bar, money input, skeletons, AppContext actions, App smoke test
+  components/           crash screen, undo bar, money input, date format and input, skeletons, AppContext actions, App smoke test
 ```
 
 - Supabase is disabled in tests (`VITE_SUPABASE_*` are empty in `vite.config.js`), so nothing touches the network.
@@ -197,7 +197,7 @@ src/
     settings/         Settings (opened from the Pocket Book title; hosts Data protection + Account + Backup + About), DataProtection
     account/          AccountSync (Google sign-in, sync status)
     backup/           DataBackup (export / import), BackupNudge (Dashboard reminder)
-    ui/               Icon, Field, CategoryBadge, EmptyState, TypeToggle, MoneyInput, UndoBar, Skeleton
+    ui/               Icon, Field, CategoryBadge, EmptyState, TypeToggle, MoneyInput, DateInput, UndoBar, Skeleton
     system/           ErrorBoundary (crash screen), TestBomb (Settings > Troubleshooting)
     dashboard/        Dashboard, WeekSummary (Mon-Sun income/expenses), DonutChart (SVG), MonthlyBars (SVG)
     transactions/     Transactions (list, search, filters), TransactionForm
@@ -216,7 +216,8 @@ src/
 
 ### Conventions
 
-- Dates are local `YYYY-MM-DD` strings, never UTC timestamps (`src/utils/dates.js`), limited to 1900-2100.
+- Dates are local `YYYY-MM-DD` strings, never UTC timestamps (`src/utils/dates.js`), limited to 1900-2100. That is the **stored** format (data, backups, sync); it is never shown to the user.
+- Dates are **shown and typed as European `DD/MM/YYYY`**, whatever the browser's language: always go through `formatDate` (plain string work, no `toLocaleDateString`). Date fields use `components/ui/DateInput` (a text box that formats itself while typing: digits get slashes, your own `/ . - space` separators work, `parseDateInput` turns it into `YYYY-MM-DD` or `''` while incomplete or impossible; it is never read month-first). A native `type="date"` box cannot be forced into this format because browsers use the system's, so it is only used as a hidden picker behind the calendar button (shown where `showPicker()` exists). The box has no `maxLength` on purpose (the browser would cut a paste before the app could clean it); pastes with spaces, a time (`2026-10-08T00:00:00Z`) or extra text are handled, and full-width IME digits are normalised (NFKC). Anything that searches dates as text must use the displayed format via `dateMatchesQuery` (also matches without leading zeros, `9/3`, and `9.3.2026` as three parts; two parts with a dot, `12.5`, stay an amount search). Not changed on purpose: the "last synced" time (12/24 h follows the browser), chart month names (`Oct`) and number formatting.
 - Amount fields use `components/ui/MoneyInput` (a text field with a numeric keypad, not `type="number"`, which behaves inconsistently across Safari/Firefox/iOS and comma-decimal locales). It accepts `.` or `,`, drops other characters, and allows 2 decimals; `parseAmount` understands both separators. Pasting goes through `normalizePastedAmount`, which understands thousands separators (`1,234.56` and `1.234,56` both become 1234.56).
 - Money is validated with `parseMoney` and summed in integer cents (`src/utils/money.js`). Never save an amount that rounds to 0.00: the loader drops those records.
 - Anything that depends on "today" or "this month" must take it from `useToday()` so a window left open past midnight stays correct.
