@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AppProvider } from './context/AppContext';
+import { SyncProvider } from './context/SyncContext';
 import { TABS } from './constants/tabs';
 import { KEYS } from './constants/storage';
 import {
@@ -10,6 +11,7 @@ import {
 import { sanitizeTab } from './utils/sanitize';
 import Icon from './components/ui/Icon';
 import DataBackup from './components/backup/DataBackup';
+import AccountSync from './components/account/AccountSync';
 import Dashboard from './components/dashboard/Dashboard';
 import Transactions from './components/transactions/Transactions';
 import Budgets from './components/budgets/Budgets';
@@ -110,7 +112,8 @@ function Shell() {
         {tab === 'calculator' && <Calculator />}
       </main>
 
-      <footer className="mx-auto max-w-6xl px-4">
+      <footer className="mx-auto max-w-6xl space-y-4 px-4">
+        <AccountSync />
         <DataBackup />
       </footer>
     </div>
@@ -120,7 +123,9 @@ function Shell() {
 export default function App() {
   return (
     <AppProvider>
-      <Shell />
+      <SyncProvider>
+        <Shell />
+      </SyncProvider>
     </AppProvider>
   );
 }

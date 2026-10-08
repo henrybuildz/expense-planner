@@ -4,6 +4,8 @@ export const KEYS = {
   budgets: 'expense-planner:budgets',
   subscriptions: 'expense-planner:subscriptions',
   tab: 'expense-planner:tab',
+  // Sync bookkeeping: which account, how far we have pulled, and what the server last confirmed.
+  sync: 'expense-planner:sync',
   // Safety copy of your data, written just before an import replaces it.
   preImportBackup: 'expense-planner:pre-import-backup',
 };

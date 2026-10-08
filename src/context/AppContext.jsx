@@ -92,6 +92,16 @@ export function AppProvider({ children }) {
     [setSubscriptions]
   );
 
+  // Used by the sync engine to apply changes pulled from the server. Always a functional update,
+  // so edits made while a sync is in flight are never overwritten.
+  const updateTable = useCallback(
+    (name, updater) => {
+      const setters = { transactions: setTransactions, budgets: setBudgets, subscriptions: setSubscriptions };
+      setters[name](updater);
+    },
+    [setTransactions, setBudgets, setSubscriptions]
+  );
+
   const clearAll = useCallback(() => {
     setTransactions([]);
     setBudgets({});
@@ -131,6 +141,7 @@ export function AppProvider({ children }) {
       replaceAll,
       mergeAll,
       clearAll,
+      updateTable,
       addTransaction,
       updateTransaction,
       deleteTransaction,
@@ -145,6 +156,7 @@ export function AppProvider({ children }) {
       transactions,
       budgets,
       subscriptions,
+      updateTable,
       replaceAll,
       mergeAll,
       clearAll,

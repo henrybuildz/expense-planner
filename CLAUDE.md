@@ -1,10 +1,10 @@
 # Expense Planner
 
-Client-side-only expense planner: React 18 + Vite 5 + Tailwind CSS 3. No backend; all data lives in the browser's `localStorage`. Installable as a PWA and works offline.
+Expense planner: React 18 + Vite 5 + Tailwind CSS 3. Data lives in the browser's `localStorage` and the app works fully offline. Optionally, signing in with Google (Supabase) syncs the data across devices. Installable as a PWA.
 
 ## Commands
 
-Requires Node.js 18+ (developed on Node 24; the Dockerfile and GitHub Actions workflow also use Node 24).
+Requires Node.js 22+ (developed on Node 24; the Dockerfile and GitHub Actions workflow also use Node 24). `@supabase/supabase-js` needs Node 22+.
 
 ```bash
 npm install        # install dependencies
@@ -41,9 +41,31 @@ docker run -p 8080:8080 expense-planner   # http://localhost:8080 (unprivileged 
 | `expense-planner:subscriptions` | Array of `{id, name, cost, cycle, nextDue, lastPaid, anchorDay}` (`cycle`: weekly, biweekly, monthly, quarterly, yearly) |
 | `expense-planner:tab` | Last active tab id |
 | `expense-planner:pre-import-backup` | Safety copy (backup-file format) of your data, written just before an import **replaces** it or **Delete all data** runs |
+| `expense-planner:sync` | Sync bookkeeping: `{userId, cursors, snapshot}` (which account this device last synced with, how far it has pulled, and what the server last confirmed) |
+| `sb-<project-ref>-auth-token` | The Supabase login session (written by supabase-js, only when signed in) |
 | `<key>:corrupt-backup` | Raw copy of a stored value that was unreadable or had records dropped by validation, written before it is overwritten |
 
 If `localStorage` is blocked or full, the app keeps working in memory and shows a warning banner. Reads go through `src/hooks/useLocalStorage.js` and `src/utils/sanitize.js`: corrupt JSON, wrong shapes, or blocked storage fall back to empty defaults and invalid items are dropped. All keys are defined in `src/constants/storage.js`. The calculator keeps no persistent state of its own.
+
+## Sync (optional, Supabase + Google sign-in)
+
+Off unless `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are set at build time (see `.env.example`; use `.env.local` locally, repository *variables* in GitHub Actions, `--build-arg` in Docker). Without them the app is local-only and nothing here is shown. Both values are public by design. Never use a `sb_secret_...` / `service_role` key in this app.
+
+**Setup (once):** run `supabase/schema.sql` in the Supabase SQL Editor; enable the Google provider (Authentication > Providers); set the Site URL and add the app's address to Redirect URLs (exact URL, e.g. `https://henrybuildz.github.io/expense-planner/`); in Google Cloud create a Web OAuth client whose redirect URI is the project's `/auth/v1/callback` URL.
+
+**Design** (`src/sync/`, `src/context/SyncContext.jsx`, `src/components/account/AccountSync.jsx`):
+
+- Local data stays the working copy. One database row per record, owned by `auth.uid()`, protected by Row Level Security (`supabase/schema.sql`; 17 checks were run against it with two users and a logged-out visitor).
+- `meta.snapshot` fingerprints what the server last confirmed. "Local changes" = current data vs snapshot, so adds, edits, deletes, imports and Delete-all are all detected without hooks in each action (`diffTable`).
+- A sync pushes local changes, then pulls rows with `updated_at >= cursor` (`runSync`). Pushing first means a local change is never overwritten by an older remote copy. Deletes are soft (`deleted_at`) so they reach other devices. `updated_at` is stamped by a database trigger, never by the client.
+- Conflicts (same record edited on two devices): the last device to sync wins.
+- Pulled rows go through the same sanitizers as localStorage and backups; invalid rows are skipped and counted.
+- Triggers: sign-in, 1.5 s after a local change, window focus, coming back online, and every 60 s while visible.
+- If the device last synced with a *different* account, the user is asked whether to add that data to the new account or discard it. "Sign out and remove data from this device" signs out first, then clears, so the clearing is never pushed as deletions.
+- Auth uses the PKCE flow explicitly (supabase-js defaults to implicit).
+- Record ids must match `[A-Za-z0-9_.-]{1,64}` (enforced in `sanitize.js`) so they are always safe to put in sync requests.
+- Not end-to-end encrypted: data is stored on Supabase's servers. Free-plan projects pause after about a week of low activity.
+- `nginx.conf` allows `connect-src https://*.supabase.co`. GitHub Pages sends no CSP.
 
 ## Currency
 
@@ -71,10 +93,14 @@ src/
   App.jsx             tab navigation (plain state, no router) and layout
   index.css           Tailwind layers + shared component classes (.card, .input, .btn...)
   context/AppContext.jsx   single shared state: transactions, budgets, subscriptions + actions
+  context/SyncContext.jsx  auth + sync orchestration (sign-in, triggers, status)
   hooks/useLocalStorage.js persistence hook (validated read, cross-tab sync)
+  sync/               engine (push/pull logic), tables (row mapping), remote (Supabase calls), meta (bookkeeping)
+  lib/supabase.js     the Supabase client (null when not configured)
   constants/          categories, periods (conversion factors), tabs, storage keys
   utils/              dates, format, sanitize, stats (dashboard aggregates)
   components/
+    account/          AccountSync (Google sign-in, sync status)
     backup/           DataBackup (export / import)
     ui/               Icon, Field, CategoryBadge, EmptyState, TypeToggle
     dashboard/        Dashboard, WeekSummary (Mon-Sun income/expenses), DonutChart (SVG), MonthlyBars (SVG)

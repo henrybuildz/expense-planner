@@ -5,3 +5,8 @@ dist
 
 # stray duplicate of this project that the desktop app created inside it
 /expense-planner/
+
+# local environment files (the example file is committed)
+.env
+.env.*
+!.env.example

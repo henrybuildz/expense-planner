@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { KEYS } from '../../constants/storage';
 import { MAX_IMPORT_BYTES, buildBackup, parseBackup } from '../../utils/backup';
 import { todayISO } from '../../utils/dates';
+import { useSync } from '../../context/SyncContext';
 import Icon from '../ui/Icon';
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -19,6 +20,7 @@ const countText = (data) =>
 export default function DataBackup() {
   const { transactions, budgets, subscriptions, replaceAll, mergeAll, clearAll } = useApp();
   const isEmpty = !transactions.length && !Object.keys(budgets).length && !subscriptions.length;
+  const { signedIn } = useSync();
   const fileInput = useRef(null);
   const [pending, setPending] = useState(null); // a validated file waiting for the user's choice
   const [message, setMessage] = useState(null); // { ok: boolean, text: string }
@@ -78,7 +80,8 @@ export default function DataBackup() {
 
   const deleteAll = () => {
     const what = countText({ transactions, budgets, subscriptions });
-    if (!window.confirm(`Delete ALL your data (${what})? This cannot be undone. Export first if you want a copy.`)) return;
+    const synced = signedIn ? ' Because you are signed in, this ALSO deletes your synced copy on all your devices.' : '';
+    if (!window.confirm(`Delete ALL your data (${what})?${synced} This cannot be undone. Export first if you want a copy.`)) return;
     saveSafetyCopy();
     clearAll();
     setPending(null);
@@ -149,6 +152,11 @@ export default function DataBackup() {
             </p>
           )}
           {pending.currencyNote && <p className="mt-1 text-amber-700">{pending.currencyNote}</p>}
+          {signedIn && (
+            <p className="mt-1 text-amber-700">
+              You are signed in, so the result is also synced to your other devices.
+            </p>
+          )}
           <p className="mt-2 text-slate-600">
             <strong>Merge</strong> adds anything you don&apos;t already have and keeps the rest.{' '}
             <strong>Replace</strong> overwrites the matching sections of your current data (a safety
