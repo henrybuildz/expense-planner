@@ -4,11 +4,8 @@ import { SyncProvider } from './context/SyncContext';
 import { UndoProvider } from './context/UndoContext';
 import { TABS } from './constants/tabs';
 import { KEYS } from './constants/storage';
-import {
-  STORAGE_ERROR_EVENT,
-  hasStorageFailed,
-  useLocalStorage,
-} from './hooks/useLocalStorage';
+import { STORAGE_ERROR_EVENT, hasStorageFailed } from './hooks/useLocalStorage';
+import { useSessionState } from './hooks/useSessionState';
 import { sanitizeTab } from './utils/sanitize';
 import { RETURN_TO_SETTINGS_KEY, useSync } from './context/SyncContext';
 import Icon from './components/ui/Icon';
@@ -34,7 +31,16 @@ const DOT_LABEL = {
 };
 
 function Shell() {
-  const [tab, setTab] = useLocalStorage(KEYS.tab, 'dashboard', sanitizeTab);
+  // Remembered for this window only: a refresh keeps the tab, closing and reopening the app starts at the dashboard.
+  const [tab, setTab] = useSessionState(KEYS.tab, 'dashboard', sanitizeTab);
+  // Earlier versions kept the tab in localStorage forever; drop that leftover so nothing stale lingers.
+  useEffect(() => {
+    try {
+      window.localStorage.removeItem(KEYS.tab);
+    } catch {
+      /* blocked storage: nothing to clean */
+    }
+  }, []);
   // Settings is a separate view (opened from the title), not one of the five tabs, and is not remembered.
   // After the Google round trip the page reloads; reopen Settings so the user can SEE they are signed in.
   const [showSettings, setShowSettings] = useState(() => {

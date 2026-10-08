@@ -42,7 +42,7 @@ docker run -p 8080:8080 expense-planner   # http://localhost:8080 (unprivileged 
 | `expense-planner:transactions` | Array of `{id, type: 'income'\|'expense', amount, category, date: 'YYYY-MM-DD', notes}` |
 | `expense-planner:budgets` | Object map `{ [expenseCategory]: monthlyLimit }` |
 | `expense-planner:subscriptions` | Array of `{id, name, cost, cycle, nextDue, lastPaid, anchorDay}` (`cycle`: weekly, biweekly, monthly, quarterly, yearly) |
-| `expense-planner:tab` | Last active tab id |
+| `expense-planner:tab` | Last active tab id, in **`sessionStorage`** (not localStorage): kept across a refresh, forgotten when the tab or app is closed, so every launch starts on the Dashboard |
 | `expense-planner:pre-import-backup` | Safety copy (backup-file format) of your data, written just before an import **replaces** it or **Delete all data** runs |
 | `expense-planner:sync` | Sync bookkeeping: `{userId, cursors, snapshot}` (which account this device last synced with, how far it has pulled, and what the server last confirmed) |
 | `sb-<project-ref>-auth-token` | The Supabase login session (written by supabase-js, only when signed in) |

@@ -81,3 +81,66 @@ describe('App (smoke test through the real screens)', () => {
     expect(localStorage.getItem('expense-planner:transactions:corrupt-backup')).toBe('{{broken');
   });
 });
+
+describe('which screen the app opens on', () => {
+  const selected = () => screen.getByRole('tab', { selected: true }).textContent;
+
+  it('a fresh launch starts on the Dashboard', () => {
+    render(<App />);
+    expect(selected()).toMatch(/dashboard/i);
+  });
+
+  it('a refresh in the same window keeps the tab you were on', async () => {
+    const first = render(<App />);
+    await openTab('Budgets');
+    first.unmount(); // same window: sessionStorage survives
+    render(<App />);
+    expect(selected()).toMatch(/budgets/i);
+  });
+
+  it('closing and reopening (session storage gone) starts on the Dashboard again', async () => {
+    const first = render(<App />);
+    await openTab('Subscriptions');
+    first.unmount();
+    sessionStorage.clear(); // what closing the tab / app does
+    render(<App />);
+    expect(selected()).toMatch(/dashboard/i);
+  });
+
+  it('a tab remembered by an older version (localStorage) is ignored and cleaned up', () => {
+    localStorage.setItem('expense-planner:tab', '"budgets"');
+    render(<App />);
+    expect(selected()).toMatch(/dashboard/i);
+    expect(localStorage.getItem('expense-planner:tab')).toBeNull();
+  });
+
+  it('a garbage remembered value falls back to the Dashboard', () => {
+    sessionStorage.setItem('expense-planner:tab', '"nonsense"');
+    render(<App />);
+    expect(selected()).toMatch(/dashboard/i);
+  });
+
+  it('blocked storage still works: starts on the Dashboard and tabs switch', async () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied'); });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('denied'); });
+    render(<App />);
+    expect(selected()).toMatch(/dashboard/i);
+    await openTab('Calculator');
+    expect(selected()).toMatch(/calculator/i);
+  });
+});
+
+describe('storage that throws on access (some private modes)', () => {
+  it('touching window.sessionStorage itself throws: the app still starts on the Dashboard and tabs work', async () => {
+    const real = Object.getOwnPropertyDescriptor(window, 'sessionStorage');
+    Object.defineProperty(window, 'sessionStorage', { configurable: true, get() { throw new DOMException('denied', 'SecurityError'); } });
+    try {
+      render(<App />);
+      expect(screen.getByRole('tab', { selected: true })).toHaveTextContent(/dashboard/i);
+      await openTab('Budgets');
+      expect(screen.getByRole('tab', { selected: true })).toHaveTextContent(/budgets/i);
+    } finally {
+      Object.defineProperty(window, 'sessionStorage', real);
+    }
+  });
+});
