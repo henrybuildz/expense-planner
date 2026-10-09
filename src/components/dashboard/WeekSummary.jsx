@@ -7,7 +7,7 @@ function Figure({ label, value, tone }) {
   return (
     <div className="min-w-0">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={`mt-1 break-words text-xl font-semibold tabular-nums ${tone}`}>{value}</p>
+      <p className={`mt-1 break-words text-base font-semibold tabular-nums sm:text-xl ${tone}`}>{value}</p>
     </div>
   );
 }
@@ -25,6 +25,9 @@ export default function WeekSummary({ transactions, today }) {
   const goTo = (monday) => setPicked(monday >= currentStart ? null : monday); // never into the future
   const isCurrent = start >= currentStart;
   const canGoBack = addDays(start, -7) >= MIN_DATE; // stay inside the supported date range
+  // Three figures side by side fit a phone unless one is very long; then they stack (never overlap).
+  const shown = [week.income, week.expense, week.net].map(formatMoney);
+  const stack = shown.some((v) => v.length > 9);
   const title = isCurrent ? 'This week' : start === addDays(currentStart, -7) ? 'Last week' : 'Week';
 
   return (
@@ -69,7 +72,7 @@ export default function WeekSummary({ transactions, today }) {
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+      <div className={`mt-4 grid gap-3 sm:grid-cols-3 sm:gap-4 ${stack ? 'grid-cols-1' : 'grid-cols-3'}`}>
         <Figure label="Income" value={formatMoney(week.income)} tone="text-emerald-700" />
         <Figure label="Expenses" value={formatMoney(week.expense)} tone="text-rose-600" />
         <Figure

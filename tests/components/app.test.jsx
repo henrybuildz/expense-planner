@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../src/App';
@@ -132,6 +132,59 @@ describe('App (smoke test through the real screens)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     const saved = JSON.parse(localStorage.getItem('expense-planner:subscriptions'))[0];
     expect(saved).toMatchObject({ name: 'Rent flat', nextDue: '2027-02-28', anchorDay: 31 });
+  });
+
+  describe('the Back button / gesture', () => {
+    const back = () => act(async () => { window.history.back(); await new Promise((r) => setTimeout(r, 30)); });
+    const selected = () => screen.getByRole('tab', { selected: true }).textContent;
+
+    it('steps back through the tabs in the order they were visited', async () => {
+      render(<App />);
+      await openTab('Budgets');
+      await openTab('Subscriptions');
+      expect(selected()).toBe('Subscriptions');
+      await back();
+      expect(selected()).toBe('Budgets');
+      await back();
+      expect(selected()).toBe('Dashboard');
+    });
+
+    it('closes Settings instead of leaving, and returns to the same tab', async () => {
+      render(<App />);
+      await openTab('Budgets');
+      await userEvent.click(screen.getByRole('button', { name: /open settings/i }));
+      expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
+      await back();
+      expect(screen.queryByRole('heading', { name: 'Settings' })).not.toBeInTheDocument();
+      expect(selected()).toBe('Budgets');
+    });
+
+    it('the in-app Back button in Settings also uses history (no stack of repeats)', async () => {
+      render(<App />);
+      await userEvent.click(screen.getByRole('button', { name: /open settings/i }));
+      const depth = window.history.length;
+      await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+      await act(async () => { await new Promise((r) => setTimeout(r, 30)); });
+      expect(screen.queryByRole('heading', { name: 'Settings' })).not.toBeInTheDocument();
+      expect(window.history.length).toBeLessThanOrEqual(depth); // went back, did not push another entry
+    });
+
+    it('two quick clicks on the same tab add one history entry, not two', async () => {
+      render(<App />);
+      const depth = () => window.history.state.pb.i; // our own entry counter (history.length shrinks after a Back)
+      const before = depth();
+      const tab = screen.getByRole('tab', { name: 'Budgets' });
+      await act(async () => { tab.click(); tab.click(); });
+      expect(depth()).toBe(before + 1);
+    });
+
+    it('re-selecting the tab you are on adds no history entry', async () => {
+      render(<App />);
+      await openTab('Budgets');
+      const length = window.history.length;
+      await openTab('Budgets');
+      expect(window.history.length).toBe(length);
+    });
   });
 
   it('the page title follows the screen', async () => {

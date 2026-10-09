@@ -24,18 +24,30 @@ function savingsHint(rate) {
   return `${formatPercent(rate)} of this month's income`;
 }
 
-function Metric({ label, value, hint, tone }) {
+// `hero`: on a phone this card spans the whole row; the others sit three to a row and drop their hint line.
+function Metric({ label, value, hint, tone, hero = false }) {
   const tones = {
     emerald: 'border-emerald-500 text-emerald-700',
     rose: 'border-rose-500 text-rose-600',
     slate: 'border-slate-400 text-slate-800',
   };
   const [border, text] = tones[tone].split(' ');
+  // A phone shows three of these side by side (about 80px for the figure): size by length so an amount is never
+  // split mid-number; only absurdly long ones may wrap. From sm up they use the full text-2xl.
+  const size = hero
+    ? 'text-2xl break-words'
+    : value.length > 12
+      ? 'text-xs break-words'
+      : value.length > 9
+        ? 'text-xs whitespace-nowrap'
+        : 'text-sm whitespace-nowrap';
   return (
-    <div className={`card border-l-4 ${border}`}>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={`mt-2 break-words text-2xl font-semibold tabular-nums ${text}`}>{value}</p>
-      <p className="mt-1 text-xs text-slate-500">{hint}</p>
+    <div className={`card border-l-4 max-sm:!p-2.5 ${border} ${hero ? 'col-span-3 sm:col-span-1' : ''}`}>
+      <p className="break-words text-xs font-medium uppercase leading-tight tracking-wide text-slate-500">{label}</p>
+      <p className={`mt-1 font-semibold tabular-nums sm:mt-2 sm:whitespace-normal sm:text-2xl ${size} ${text}`}>
+        {value}
+      </p>
+      <p className={`mt-1 text-xs text-slate-500 ${hero ? '' : 'max-sm:hidden'}`}>{hint}</p>
     </div>
   );
 }
@@ -75,11 +87,12 @@ export default function Dashboard({ onNavigate }) {
   return (
     <div className="space-y-6">
       <BackupNudge />
-      <section aria-label="Summary" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section aria-label="Summary" className="grid grid-cols-3 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         <Metric
           label="Balance"
           value={formatMoney(stats.balance)}
           hint="All time: income minus expenses"
+          hero
           tone={stats.balance >= 0 ? 'slate' : 'rose'}
         />
         <Metric

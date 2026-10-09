@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { SyncProvider } from './context/SyncContext';
 import { UndoProvider } from './context/UndoContext';
-import { TABS } from './constants/tabs';
+import { TABS, isTabId } from './constants/tabs';
 import { KEYS } from './constants/storage';
 import { STORAGE_ERROR_EVENT, hasStorageFailed } from './hooks/useLocalStorage';
 import { useRequestPersistence } from './hooks/useRequestPersistence';
@@ -84,19 +84,67 @@ function Shell() {
   useEffect(() => {
     if (!showSettings) return undefined;
     const onKey = (e) => {
-      if (e.key === 'Escape') setShowSettings(false);
+      if (e.key === 'Escape') closeSettings();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [showSettings]);
 
-  const goToTab = (id) => {
-    setShowSettings(false);
-    setTab(id);
+  // ---- history: every screen change is a history entry, so the phone's Back gesture / the browser's Back
+  // button steps back through tabs and out of Settings instead of leaving the app. `i` counts our own entries.
+  const current = useRef({ tab, settings: showSettings });
+  current.current = { tab, settings: showSettings };
+
+  const record = (view, replace) => {
+    try {
+      const i = (window.history.state && window.history.state.pb && window.history.state.pb.i) || 0;
+      const state = { pb: { ...view, i: replace ? i : i + 1 } };
+      if (replace) window.history.replaceState(state, '');
+      else window.history.pushState(state, '');
+    } catch {
+      /* history unavailable (sandboxed frame): navigation still works, Back just leaves */
+    }
+  };
+
+  // Stamp the entry we arrived on, so Back can return to it.
+  useEffect(() => {
+    record(current.current, true);
+  }, []);
+
+  useEffect(() => {
+    const onPop = (e) => {
+      const view = e.state && e.state.pb;
+      if (!view) return; // an entry that is not ours (another page, a hash): leave it alone
+      const next = { tab: isTabId(view.tab) ? view.tab : 'dashboard', settings: Boolean(view.settings) };
+      current.current = next; // before the re-render, so a click straight after Back compares against the truth
+      setTab(next.tab);
+      setShowSettings(next.settings);
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [setTab]);
+
+  const go = (view, { replace = false } = {}) => {
+    const now = current.current;
+    if (view.tab === now.tab && view.settings === now.settings) return;
+    current.current = view; // two quick clicks before a re-render must not push the same entry twice
+    setTab(view.tab);
+    setShowSettings(view.settings);
+    record(view, replace);
+  };
+
+  const goToTab = (id, options) => go({ tab: id, settings: false }, options);
+
+  const closeSettings = () => {
+    const state = window.history.state && window.history.state.pb;
+    if (state && state.settings && state.i > 0) window.history.back(); // we pushed it, so step back out of it
+    else go({ tab: current.current.tab, settings: false }, { replace: true });
   };
 
   const openSettings = () => {
-    setShowSettings((open) => !open);
+    if (current.current.settings) closeSettings();
+    else go({ tab: current.current.tab, settings: true });
     window.scrollTo(0, 0);
   };
 
@@ -109,7 +157,7 @@ function Shell() {
     else if (e.key === 'End') next = TABS.length - 1;
     else return;
     e.preventDefault();
-    goToTab(TABS[next].id);
+    goToTab(TABS[next].id, { replace: true }); // arrowing through tabs should not stack history entries
     document.getElementById(`tab-${TABS[next].id}`)?.focus();
   };
 
@@ -213,7 +261,7 @@ function Shell() {
       {showSettings ? (
         <main id="panel" tabIndex={-1} aria-labelledby="settings-title" className={`${GUTTER} py-6 focus:outline-none`}>
           <ErrorBoundary variant="panel" resetKey="settings">
-            <Settings onClose={() => setShowSettings(false)} />
+            <Settings onClose={closeSettings} />
           </ErrorBoundary>
         </main>
       ) : (

@@ -138,9 +138,9 @@ export default function Subscriptions() {
                 return (
                   <li
                     key={s.id}
-                    className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_9.5rem_6rem_auto]"
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 py-3 sm:grid-cols-[minmax(0,1fr)_9.5rem_6rem_auto] sm:gap-x-4"
                   >
-                    <div className="min-w-0 flex-1 basis-40">
+                    <div className="col-start-1 row-start-1 min-w-0 sm:col-start-auto sm:row-start-auto">
                       <p className="truncate font-medium">{s.name}</p>
                       <p className="text-xs text-slate-500">
                         {periodById(s.cycle).label} · {formatMoney(convert(s.cost, s.cycle, 'monthly'))}
@@ -148,17 +148,19 @@ export default function Subscriptions() {
                         {s.lastPaid && ` · last paid ${formatDate(s.lastPaid)}`}
                       </p>
                     </div>
-                    <span className={`rounded-full px-2.5 py-0.5 text-center text-xs font-medium sm:block ${due.cls}`}>
+                    <span
+                      className={`col-start-1 row-start-2 w-fit rounded-full px-2.5 py-0.5 text-center text-xs font-medium max-sm:px-2 max-sm:text-[11px] sm:col-start-auto sm:row-start-auto sm:block sm:w-auto ${due.cls}`}
+                    >
                       {due.text}
                     </span>
                     <span
-                      className={`min-w-20 text-right text-sm font-semibold tabular-nums ${
+                      className={`col-start-2 row-start-1 min-w-20 text-right text-sm font-semibold tabular-nums sm:col-start-auto sm:row-start-auto ${
                         daysUntil(s.nextDue, today) < 0 ? 'text-rose-600' : 'text-slate-800'
                       }`}
                     >
                       {formatMoney(s.cost)}
                     </span>
-                    <div className="flex items-center">
+                    <div className="col-start-2 row-start-2 flex items-center justify-end sm:col-start-auto sm:row-start-auto">
                       <button
                         type="button"
                         className="btn btn-secondary !px-2.5 !py-1 text-xs"
