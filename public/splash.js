@@ -3,6 +3,7 @@
  *
  *  - The splash plays once per launch (per browser tab / installed-app session), not on every refresh.
  *    Add ?splash to the address to force it, e.g. https://.../expense-planner/?splash
+ *  - It is also skipped when it already played within the last REPLAY_MS (reopening the app a few minutes later).
  *  - Tap, click or any key skips it.
  *  - It doubles as a loading screen: if the app has not appeared yet when the curtain is due to lift
  *    (slow connection), the curtain waits for it, for at most MAX_WAIT_MS.
@@ -17,6 +18,8 @@
 (function () {
   var root = document.documentElement;
   var KEY = 'pocket-book:splash-seen';
+  var LAST_KEY = 'pocket-book:splash-last'; // localStorage: when it last played
+  var REPLAY_MS = 30 * 60 * 1000;
   var MAX_WAIT_MS = 8000; // hard limit: the splash is gone by then no matter what
   var STARTUP_MS = 10000; // no app by then: say so
   var forced = /[?&]splash(=|&|$)/.test(window.location.search);
@@ -60,7 +63,13 @@
       root.classList.add('no-splash');
       return;
     }
+    var last = Number(window.localStorage.getItem(LAST_KEY));
+    if (!forced && last && Date.now() - last >= 0 && Date.now() - last < REPLAY_MS) {
+      root.classList.add('no-splash');
+      return;
+    }
     window.sessionStorage.setItem(KEY, '1');
+    window.localStorage.setItem(LAST_KEY, String(Date.now()));
   } catch (e) {
     /* storage blocked: just play it */
   }

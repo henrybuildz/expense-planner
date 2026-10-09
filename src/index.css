@@ -15,8 +15,20 @@
   .label {
     @apply mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500;
   }
+  /* 100vh is taller than what is visible on phones (the browser bars); dvh is the visible height. */
+  .min-h-app {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
   .input {
     @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30;
+  }
+  /* Touch devices (phones AND tablets, whatever their width): iOS Safari zooms into any field under 16px. */
+  @media (pointer: coarse) {
+    .input {
+      font-size: 16px;
+      line-height: 1.5rem;
+    }
   }
   .input-error {
     @apply border-rose-400 focus:border-rose-500 focus:ring-rose-500/30;

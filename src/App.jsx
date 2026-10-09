@@ -53,6 +53,12 @@ function Shell() {
     }
   });
   const { signedIn, status } = useSync();
+  // On a phone the tab strip scrolls sideways; make sure the active tab is never out of sight (e.g. after a refresh).
+  useEffect(() => {
+    const el = document.getElementById(`tab-${tab}`);
+    if (el && el.scrollIntoView) el.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, [tab]);
+
   // The browser tab / history entry names the current screen instead of always saying "Pocket Book".
   useEffect(() => {
     const name = showSettings ? 'Settings' : TABS.find((t) => t.id === tab)?.label;
@@ -108,7 +114,7 @@ function Shell() {
   };
 
   return (
-    <div className="min-h-screen pb-10">
+    <div className="min-h-app pb-10">
       <a
         href="#panel"
         onClick={(e) => {

@@ -77,7 +77,7 @@ function CrashScreen({ error, componentStack, variant, repeated, onRetry }) {
       className={
         panel
           ? 'card mx-auto max-w-xl text-left outline-none'
-          : 'flex min-h-screen outline-none items-center justify-center bg-slate-50 p-6'
+          : 'flex min-h-app outline-none items-center justify-center bg-slate-50 p-6'
       }
     >
       <div className={panel ? '' : 'w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200/70'}>

@@ -42,6 +42,7 @@ docker run -p 8080:8080 expense-planner   # http://localhost:8080 (unprivileged 
 | `expense-planner:transactions` | Array of `{id, type: 'income'\|'expense', amount, category, date: 'YYYY-MM-DD', notes}` |
 | `expense-planner:budgets` | Object map `{ [expenseCategory]: monthlyLimit }` |
 | `expense-planner:subscriptions` | Array of `{id, name, cost, cycle, nextDue, lastPaid, anchorDay}` (`cycle`: weekly, biweekly, monthly, quarterly, yearly) |
+| `pocket-book:splash-last` | When the launch splash last played (ms timestamp, localStorage); it is skipped again within 30 minutes. `pocket-book:splash-seen` (sessionStorage) is its once-per-launch flag |
 | `expense-planner:tab` | Last active tab id, in **`sessionStorage`** (not localStorage): kept across a refresh, forgotten when the tab or app is closed, so every launch starts on the Dashboard |
 | `expense-planner:backup-status` | `{lastBackup, since, snoozeUntil}`: three dates (or null), no data. Drives the backup reminder |
 | `expense-planner:pre-import-backup` | Safety copy (backup-file format) of your data, written just before an import **replaces** it or **Delete all data** runs |
@@ -132,7 +133,7 @@ All data is read from `localStorage` synchronously, so almost nothing in the app
 
 A green screen where the three logo bars pop up one after another, "Pocket Book" fades in, and the screen lifts away like a curtain (about 2.2 s). It is plain HTML + CSS inside `index.html` (so it paints instantly, before any JavaScript loads) plus a tiny controller, `public/splash.js` (external because the CSP only allows scripts from this site; it must also stay in the service worker's `SHELL` list so it works offline).
 
-- Plays once per launch (`sessionStorage` flag), not on every refresh. Add `?splash` to the URL to force it, e.g. when tuning it.
+- Plays once per launch (`sessionStorage` flag), not on every refresh, and not again when it already played in the last 30 minutes (`pocket-book:splash-last` in localStorage, `REPLAY_MS`). Add `?splash` to the URL to force it, e.g. when tuning it.
 - Tap/click/any key skips it. With `prefers-reduced-motion` it becomes a short fade.
 - **Doubles as a loading screen:** the curtain is due to lift at 1.65 s; if the app has not mounted into `#root` by then (slow connection) `splash.js` pauses the exit and resumes it as soon as the app appears (`MutationObserver`), never waiting longer than `MAX_WAIT_MS` (8 s). A tap releases it immediately. Note `el.getAnimations()` needs `{ subtree: true }`: the intro clock lives on a child element.
 - Fail-safe: the CSS animation ends hidden (`visibility: hidden`, moved off-screen) by itself, and a timer removes the element, so a JavaScript failure or blocked animations can never leave the app covered for long.
@@ -230,5 +231,6 @@ src/
 - Money is validated with `parseMoney` and summed in integer cents (`src/utils/money.js`). Never save an amount that rounds to 0.00: the loader drops those records.
 - Anything that depends on "today" or "this month" must take it from `useToday()` so a window left open past midnight stays correct.
 - Subscription `anchorDay` keeps monthly/quarterly/yearly bills from drifting after a short month (Jan 31 > Feb 28 > Mar 31).
+- Form fields are 16 px on touch devices (`@media (pointer: coarse)` in `.input`, so iPads too, not a width breakpoint): iOS Safari zooms into any field below 16 px when focused. Page height uses `.min-h-app` (`100dvh`), not `min-h-screen`. The active tab is scrolled into view in the tab strip.
 - Tailwind class names must appear in full in source (category badge classes live in `constants/categories.js`) so the scanner keeps them.
 - Charts are hand-built SVG; there is no charting dependency.
