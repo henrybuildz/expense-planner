@@ -117,6 +117,23 @@ describe('App (smoke test through the real screens)', () => {
     expect(window.location.href).toBe(before);
   });
 
+  it('renaming a subscription does not re-anchor a month-end bill to a short month\'s day', async () => {
+    // A Jan-31 bill that is currently due on Feb 28: the anchor must stay 31 so March lands on the 31st.
+    localStorage.setItem(
+      'expense-planner:subscriptions',
+      JSON.stringify([{ id: 's1', name: 'Rent', cost: 100, cycle: 'monthly', nextDue: '2027-02-28', lastPaid: '', anchorDay: 31 }])
+    );
+    render(<App />);
+    await openTab('Subscriptions');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Rent' }));
+    const name = screen.getByLabelText(/provider/i);
+    await userEvent.clear(name);
+    await userEvent.type(name, 'Rent flat');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    const saved = JSON.parse(localStorage.getItem('expense-planner:subscriptions'))[0];
+    expect(saved).toMatchObject({ name: 'Rent flat', nextDue: '2027-02-28', anchorDay: 31 });
+  });
+
   it('the page title follows the screen', async () => {
     render(<App />);
     expect(document.title).toBe('Dashboard · Pocket Book');

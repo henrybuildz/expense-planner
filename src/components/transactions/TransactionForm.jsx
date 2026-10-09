@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { categoriesFor } from '../../constants/categories';
 import { CURRENCY } from '../../constants/currency';
 import { isValidISO, todayISO } from '../../utils/dates';
+import { changedFields } from '../../utils/changes';
 import { parseMoney } from '../../utils/money';
 import DateInput from '../ui/DateInput';
 import Field from '../ui/Field';
@@ -22,15 +23,21 @@ function validate(form) {
 export default function TransactionForm({ editing, onSubmit, onCancel }) {
   const [form, setForm] = useState(blank);
   const [errors, setErrors] = useState({});
+  const baseline = useRef(null); // the saved values this edit started from
 
-  // Load the transaction being edited (or reset when editing stops).
+  // Load the transaction being edited (or reset when editing stops). Keyed on the record's id, NOT the object:
+  // a background sync hands over a fresh object for the same record, and reloading from it used to wipe what the
+  // user had typed. A record that vanishes (deleted elsewhere) makes `editing` null, which resets the form.
+  const editingId = editing ? editing.id : null;
   useEffect(() => {
     setErrors({});
     setForm(editing ? { ...editing, amount: editing.amount.toFixed(2) } : blank());
-  }, [editing]);
+    baseline.current = editing
+      ? { type: editing.type, amount: editing.amount, category: editing.category, date: editing.date, notes: editing.notes }
+      : null;
+  }, [editingId]);
 
   // Move focus into the form when a different record starts being edited (not on every re-render of the same one).
-  const editingId = editing ? editing.id : null;
   useEffect(() => {
     if (editingId) document.getElementById('tx-amount')?.focus();
   }, [editingId]);
@@ -54,13 +61,14 @@ export default function TransactionForm({ editing, onSubmit, onCancel }) {
     const found = validate(form);
     setErrors(found);
     if (Object.keys(found).length) return;
-    onSubmit({
+    const data = {
       type: form.type,
       amount: parseMoney(form.amount).value,
       category: form.category,
       date: form.date,
       notes: form.notes.trim(),
-    });
+    };
+    onSubmit(editing && baseline.current ? changedFields(data, baseline.current) : data);
     if (!editing) setForm((f) => ({ ...blank(), type: f.type, date: f.date }));
   };
 

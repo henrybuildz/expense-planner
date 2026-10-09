@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CURRENCY } from '../../constants/currency';
 import { CYCLES } from '../../constants/periods';
 import { isValidISO, todayISO } from '../../utils/dates';
+import { changedFields } from '../../utils/changes';
 import { parseMoney } from '../../utils/money';
 import DateInput from '../ui/DateInput';
 import Field from '../ui/Field';
@@ -12,14 +13,20 @@ const blank = () => ({ name: '', cost: '', cycle: 'monthly', nextDue: todayISO()
 export default function SubscriptionForm({ editing, onSubmit, onCancel }) {
   const [form, setForm] = useState(blank);
   const [errors, setErrors] = useState({});
+  const baseline = useRef(null); // the saved values this edit started from
 
+  // Keyed on the record's id, not the object, so a background sync that hands over a fresh copy of the same
+  // record does not wipe what the user is typing (see TransactionForm).
+  const editingId = editing ? editing.id : null;
   useEffect(() => {
     setErrors({});
     setForm(editing ? { ...editing, cost: editing.cost.toFixed(2) } : blank());
-  }, [editing]);
+    baseline.current = editing
+      ? { name: editing.name, cost: editing.cost, cycle: editing.cycle, nextDue: editing.nextDue }
+      : null;
+  }, [editingId]);
 
   // Move focus into the form when a different record starts being edited (not on every re-render of the same one).
-  const editingId = editing ? editing.id : null;
   useEffect(() => {
     if (editingId) document.getElementById('s-name')?.focus();
   }, [editingId]);
@@ -40,12 +47,8 @@ export default function SubscriptionForm({ editing, onSubmit, onCancel }) {
     if (!form.nextDue || !isValidISO(form.nextDue)) found.nextDue = 'Enter a real due date as DD/MM/YYYY.';
     setErrors(found);
     if (Object.keys(found).length) return;
-    onSubmit({
-      name: form.name.trim(),
-      cost: money.value,
-      cycle: form.cycle,
-      nextDue: form.nextDue,
-    });
+    const data = { name: form.name.trim(), cost: money.value, cycle: form.cycle, nextDue: form.nextDue };
+    onSubmit(editing && baseline.current ? changedFields(data, baseline.current) : data);
     if (!editing) setForm(blank());
   };
 
