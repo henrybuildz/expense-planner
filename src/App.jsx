@@ -6,6 +6,7 @@ import { TABS, isTabId } from './constants/tabs';
 import { KEYS } from './constants/storage';
 import { STORAGE_ERROR_EVENT, hasStorageFailed } from './hooks/useLocalStorage';
 import { useRequestPersistence } from './hooks/useRequestPersistence';
+import { useSwipe } from './hooks/useSwipe';
 import { useSessionState } from './hooks/useSessionState';
 import { sanitizeTab } from './utils/sanitize';
 import { RETURN_TO_SETTINGS_KEY, useSync } from './context/SyncContext';
@@ -134,7 +135,11 @@ function Shell() {
     record(view, replace);
   };
 
-  const goToTab = (id, options) => go({ tab: id, settings: false }, options);
+  const [slide, setSlide] = useState(null); // 'from-right' | 'from-left': which way the new tab slides in
+  const goToTab = (id, options) => {
+    setSlide(null); // only a swipe slides; a stale direction must never animate a later tap
+    go({ tab: id, settings: false }, options);
+  };
 
   const closeSettings = () => {
     const state = window.history.state && window.history.state.pb;
@@ -161,8 +166,24 @@ function Shell() {
     document.getElementById(`tab-${TABS[next].id}`)?.focus();
   };
 
+  // Swipe left / right anywhere on the page to move to the next / previous tab. Not while Settings is open.
+  const swipe = useSwipe({
+    enabled: !showSettings,
+    onSwipe: (dir) => {
+      const index = TABS.findIndex((t) => t.id === current.current.tab);
+      const next = TABS[index + (dir === 'next' ? 1 : -1)];
+      if (!next) return; // already at the first / last tab
+      goToTab(next.id);
+      setSlide(dir === 'next' ? 'from-right' : 'from-left'); // after goToTab, which clears it
+    },
+  });
+
   return (
-    <div className="min-h-app pb-10">
+    <div
+      className="min-h-app pb-10"
+      style={{ touchAction: 'pan-y pinch-zoom' }} // sideways moves are ours; vertical scrolling and zoom stay native
+      {...swipe}
+    >
       <a
         href="#panel"
         onClick={(e) => {
@@ -265,7 +286,14 @@ function Shell() {
           </ErrorBoundary>
         </main>
       ) : (
-        <main id="panel" tabIndex={-1} role="tabpanel" aria-labelledby={`tab-${tab}`} className={`${GUTTER} py-6 focus:outline-none`}>
+        <main
+          id="panel"
+          tabIndex={-1}
+          role="tabpanel"
+          aria-labelledby={`tab-${tab}`}
+          className={`${GUTTER} py-6 focus:outline-none ${slide ? `slide-${slide}` : ''}`}
+          onAnimationEnd={() => setSlide(null)}
+        >
           <ErrorBoundary variant="panel" resetKey={tab}>
             {tab === 'dashboard' && <Dashboard onNavigate={goToTab} />}
             {tab === 'transactions' && <Transactions />}

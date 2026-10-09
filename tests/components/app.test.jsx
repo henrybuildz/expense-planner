@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../src/App';
@@ -184,6 +184,90 @@ describe('App (smoke test through the real screens)', () => {
       const length = window.history.length;
       await openTab('Budgets');
       expect(window.history.length).toBe(length);
+    });
+  });
+
+  describe('swiping between tabs', () => {
+    const swipe = (el, dx, dy = 0) => {
+      fireEvent.touchStart(el, { touches: [{ clientX: 200, clientY: 300 }] });
+      fireEvent.touchEnd(el, { changedTouches: [{ clientX: 200 + dx, clientY: 300 + dy }] });
+    };
+    const selected = () => screen.getByRole('tab', { selected: true }).textContent;
+
+    it('moves through ALL five tabs and back, starting the swipe anywhere on the page', async () => {
+      render(<App />);
+      const page = screen.getByRole('tabpanel');
+      for (const name of ['Transactions', 'Budgets', 'Subscriptions', 'Calculator']) {
+        swipe(page, -120);
+        await act(async () => {});
+        expect(selected()).toBe(name);
+      }
+      for (const name of ['Subscriptions', 'Budgets', 'Transactions', 'Dashboard']) {
+        swipe(screen.getByRole('tabpanel'), 120);
+        await act(async () => {});
+        expect(selected()).toBe(name);
+      }
+    });
+
+    it('does nothing past the first and last tab', async () => {
+      render(<App />);
+      swipe(screen.getByRole('tabpanel'), 120); // right on the first tab
+      await act(async () => {});
+      expect(selected()).toBe('Dashboard');
+      await openTab('Calculator');
+      swipe(screen.getByRole('tabpanel'), -120); // left on the last tab
+      await act(async () => {});
+      expect(selected()).toBe('Calculator');
+    });
+
+    it('ignores vertical scrolls, short moves, and swipes that start in a field', async () => {
+      render(<App />);
+      swipe(screen.getByRole('tabpanel'), -40, 5);
+      swipe(screen.getByRole('tabpanel'), -100, 140);
+      await act(async () => {});
+      expect(selected()).toBe('Dashboard');
+      await openTab('Transactions');
+      swipe(screen.getByLabelText(/amount/i), -150); // dragging inside a text field
+      await act(async () => {});
+      expect(selected()).toBe('Transactions');
+    });
+
+    it('a flick while a field is focused does not throw away what is being typed', async () => {
+      render(<App />);
+      await openTab('Transactions');
+      const amount = screen.getByLabelText(/amount/i);
+      await userEvent.type(amount, '12.5');
+      expect(amount).toHaveFocus();
+      swipe(screen.getByRole('tabpanel'), -150);
+      await act(async () => {});
+      expect(selected()).toBe('Transactions');
+      expect(screen.getByLabelText(/amount/i)).toHaveValue('12.5');
+    });
+
+    it('a tap on a tab after a swipe does not slide', async () => {
+      render(<App />);
+      swipe(screen.getByRole('tabpanel'), -120);
+      await act(async () => {});
+      expect(screen.getByRole('tabpanel').className).toContain('slide-from-right');
+      await openTab('Budgets');
+      expect(screen.getByRole('tabpanel').className).not.toContain('slide-');
+    });
+
+    it('is off while Settings is open', async () => {
+      render(<App />);
+      await userEvent.click(screen.getByRole('button', { name: /open settings/i }));
+      swipe(screen.getByRole('heading', { name: 'Settings' }), -150);
+      await act(async () => {});
+      expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
+    });
+
+    it('a swipe is one history step, so Back undoes it', async () => {
+      render(<App />);
+      swipe(screen.getByRole('tabpanel'), -120);
+      await act(async () => {});
+      expect(selected()).toBe('Transactions');
+      await act(async () => { window.history.back(); await new Promise((r) => setTimeout(r, 30)); });
+      expect(selected()).toBe('Dashboard');
     });
   });
 

@@ -74,3 +74,24 @@
 @media (prefers-reduced-motion: reduce) {
   .toast-in { animation: none; }
 }
+
+/* The tab you swiped to slides in from the side you swiped towards. Short and transform-only. */
+@keyframes slide-from-right {
+  from { opacity: 0; transform: translateX(28px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes slide-from-left {
+  from { opacity: 0; transform: translateX(-28px); }
+  to { opacity: 1; transform: none; }
+}
+.slide-from-right { animation: slide-from-right 0.18s ease-out; }
+.slide-from-left { animation: slide-from-left 0.18s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .slide-from-right, .slide-from-left { animation: none; }
+}
+
+/* Phones and tablets: no scroll bars (the page and the tab strip). They overlay the content and only add noise. */
+@media (pointer: coarse) {
+  html, [role='tablist'] { scrollbar-width: none; }
+  html::-webkit-scrollbar, body::-webkit-scrollbar, [role='tablist']::-webkit-scrollbar { display: none; }
+}
